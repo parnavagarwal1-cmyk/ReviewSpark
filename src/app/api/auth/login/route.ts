@@ -31,7 +31,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isValid = await verifyPassword(password, adminPasswordHash);
+    // Normalize hash in case backslashes were literally added in Vercel UI
+    const normalizedHash = adminPasswordHash.replace(/\\(\$)/g, '$1').trim();
+
+    const isValid = await verifyPassword(password, normalizedHash);
     if (!isValid) {
       // Add small delay to limit brute force (200ms)
       await new Promise((r) => setTimeout(r, 200));
