@@ -13,7 +13,16 @@ export async function POST(request: NextRequest) {
     // Admin password hash must be set via environment variable.
     // Run: node -e "const b = require('bcryptjs'); b.hash('yourpassword', 12).then(console.log)"
     // to generate the hash, then set ADMIN_PASSWORD_HASH in your .env.local
-    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    let adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    if (!adminPasswordHash) {
+      // Hot reload fallback: refresh environment variables from .env.local
+      try {
+        const { loadEnvConfig } = await import('@next/env');
+        loadEnvConfig(process.cwd());
+        adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+      } catch {}
+    }
+
     if (!adminPasswordHash) {
       console.error('[auth] ADMIN_PASSWORD_HASH is not set');
       return NextResponse.json(
