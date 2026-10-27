@@ -32,9 +32,14 @@ export default function DashboardPage() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Your ReviewSpark performance at a glance</p>
         </div>
-        <Link href="/businesses" className="btn btn-primary" id="dashboard-add-business-btn">
-          + Add Business
-        </Link>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
+          <Link href="/businesses?search_maps=true" className="btn btn-secondary" id="dashboard-find-maps-btn">
+            🔍 Find on Google Maps
+          </Link>
+          <Link href="/businesses" className="btn btn-primary" id="dashboard-add-business-btn">
+            + Add Business
+          </Link>
+        </div>
       </div>
 
       {loading && (

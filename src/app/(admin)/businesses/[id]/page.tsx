@@ -241,6 +241,40 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
               <InfoRow label="Name" value={business.business_name} />
               <InfoRow label="Address" value={business.address || '—'} />
               <InfoRow label="Category" value={business.category || '—'} />
+              <InfoRow
+                label="Google Maps"
+                value={
+                  business.google_maps_url ? (
+                    <a
+                      href={business.google_maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--brand-primary-light)', textDecoration: 'underline' }}
+                    >
+                      View on Maps ↗
+                    </a>
+                  ) : (
+                    '—'
+                  )
+                }
+              />
+              <InfoRow
+                label="Review Link"
+                value={
+                  business.google_review_url ? (
+                    <a
+                      href={business.google_review_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--brand-primary-light)', textDecoration: 'underline' }}
+                    >
+                      Verify Review Link ↗
+                    </a>
+                  ) : (
+                    '—'
+                  )
+                }
+              />
               <InfoRow label="AI Highlights" value={business.custom_context || 'None set (click Edit to add)'} />
               <InfoRow label="Place ID" value={business.place_id || '—'} mono />
               <InfoRow label="Token" value={business.public_token} mono />
@@ -356,7 +390,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--admin-border)', fontSize: '0.875rem', gap: '1rem' }}>
       <span style={{ color: 'var(--admin-text-muted)', flexShrink: 0 }}>{label}</span>
