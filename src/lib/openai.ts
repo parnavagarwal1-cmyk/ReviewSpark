@@ -25,7 +25,7 @@ function getClient(): { client: OpenAI; model: string } {
       });
       _currentProvider = 'gemini';
     }
-    const model = process.env.GEMINI_MODEL ?? process.env.OPENAI_MODEL ?? 'gemini-2.5-flash';
+    const model = process.env.GEMINI_MODEL ?? process.env.OPENAI_MODEL ?? 'gemini-3.5-flash-lite';
     return { client: _client, model };
   }
 
@@ -47,7 +47,7 @@ function getClient(): { client: OpenAI; model: string } {
 }
 
 export const OPENAI_MODEL = process.env.GEMINI_API_KEY
-  ? (process.env.GEMINI_MODEL ?? 'gemini-2.5-flash')
+  ? (process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite')
   : (process.env.OPENAI_MODEL ?? 'gpt-4o-mini');
 
 // Cost per 1M tokens (approximate, update as pricing changes)
