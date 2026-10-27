@@ -57,13 +57,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Business not found' }, { status: 404 });
   }
 
-  // ── Check OpenAI availability ─────────────────────────────────────────────
+  // ── Check AI availability ────────────────────────────────────────────────
   if (!isOpenAIConfigured()) {
     return NextResponse.json(
       {
         error:
           'AI draft generation is not configured. ' +
-          'Please set up your OpenAI API key.',
+          'Please set up either your Google Gemini API key or OpenAI API key in settings.',
         ai_unavailable: true,
       },
       { status: 503 }

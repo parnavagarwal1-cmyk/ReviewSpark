@@ -27,14 +27,24 @@ describe('OpenAI Utilities', () => {
     });
   });
 
-  describe('isOpenAIConfigured', () => {
+  describe('isOpenAIConfigured / isAIConfigured', () => {
     it('returns true when API key is set', () => {
       process.env.OPENAI_API_KEY = 'sk-test';
+      delete process.env.GEMINI_API_KEY;
       expect(isOpenAIConfigured()).toBe(true);
     });
 
-    it('returns false when API key is not set', () => {
+    it('returns true when GEMINI_API_KEY is set', () => {
       delete process.env.OPENAI_API_KEY;
+      process.env.GEMINI_API_KEY = 'AIza-test-gemini';
+      expect(isOpenAIConfigured()).toBe(true);
+      delete process.env.GEMINI_API_KEY;
+      process.env.OPENAI_API_KEY = 'sk-mock-openai-key';
+    });
+
+    it('returns false when neither API key is set', () => {
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.GEMINI_API_KEY;
       expect(isOpenAIConfigured()).toBe(false);
       // Restore
       process.env.OPENAI_API_KEY = 'sk-mock-openai-key';

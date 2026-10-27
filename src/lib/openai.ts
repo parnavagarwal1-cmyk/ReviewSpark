@@ -12,31 +12,58 @@
 import OpenAI from 'openai';
 
 let _client: OpenAI | null = null;
+let _currentProvider: 'gemini' | 'openai' | null = null;
 
-function getClient(): OpenAI {
-  if (!_client) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        'OPENAI_API_KEY is not set. AI draft generation is unavailable. ' +
-        'Set this environment variable to enable the feature.'
-      );
+function getClient(): { client: OpenAI; model: string } {
+  // Support Google Gemini via its official OpenAI-compatible endpoint
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    if (!_client || _currentProvider !== 'gemini') {
+      _client = new OpenAI({
+        apiKey: geminiKey,
+        baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      });
+      _currentProvider = 'gemini';
     }
-    _client = new OpenAI({ apiKey });
+    const model = process.env.GEMINI_MODEL ?? process.env.OPENAI_MODEL ?? 'gemini-2.5-flash';
+    return { client: _client, model };
   }
-  return _client;
+
+  // Fallback to OpenAI
+  const openAiKey = process.env.OPENAI_API_KEY;
+  if (!openAiKey) {
+    throw new Error(
+      'Neither GEMINI_API_KEY nor OPENAI_API_KEY is set. AI draft generation is unavailable. ' +
+      'Set either GEMINI_API_KEY or OPENAI_API_KEY to enable this feature.'
+    );
+  }
+
+  if (!_client || _currentProvider !== 'openai') {
+    _client = new OpenAI({ apiKey: openAiKey });
+    _currentProvider = 'openai';
+  }
+  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+  return { client: _client, model };
 }
 
-export const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+export const OPENAI_MODEL = process.env.GEMINI_API_KEY
+  ? (process.env.GEMINI_MODEL ?? 'gemini-2.5-flash')
+  : (process.env.OPENAI_MODEL ?? 'gpt-4o-mini');
 
 // Cost per 1M tokens (approximate, update as pricing changes)
 const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
+  'gemini-2.5-flash': 0.075,
+  'gemini-1.5-flash': 0.075,
+  'gemini-1.5-pro': 1.25,
   'gpt-4o-mini': 0.15,
   'gpt-4o': 2.50,
   'gpt-4-turbo': 10.00,
   'gpt-3.5-turbo': 0.50,
 };
 const COST_PER_1M_OUTPUT_TOKENS: Record<string, number> = {
+  'gemini-2.5-flash': 0.30,
+  'gemini-1.5-flash': 0.30,
+  'gemini-1.5-pro': 5.00,
   'gpt-4o-mini': 0.60,
   'gpt-4o': 10.00,
   'gpt-4-turbo': 30.00,
@@ -89,8 +116,7 @@ export async function generateReviewDrafts(
     throw new Error('Rating must be an integer between 1 and 5');
   }
 
-  const client = getClient();
-  const model = OPENAI_MODEL;
+  const { client, model } = getClient();
   const sentiment = STAR_SENTIMENTS[rating] ?? 'neutral';
 
   const categoryContext = businessCategory
@@ -178,8 +204,10 @@ function parseDrafts(content: string): [string, string] {
 }
 
 /**
- * Checks if the OpenAI API key is configured (without making an API call).
+ * Checks if an AI provider API key (Google Gemini or OpenAI) is configured.
  */
 export function isOpenAIConfigured(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return Boolean(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY);
 }
+
+export const isAIConfigured = isOpenAIConfigured;
