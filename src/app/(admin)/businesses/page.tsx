@@ -261,6 +261,7 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
   const [businessName, setBusinessName] = useState('');
   const [address, setAddress] = useState('');
   const [category, setCategory] = useState('');
+  const [customContext, setCustomContext] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [needsManual, setNeedsManual] = useState(false);
@@ -273,6 +274,7 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
     try {
       const body: CreateBusinessInput = {
         google_review_url: googleUrl,
+        custom_context: customContext.trim() || undefined,
         ...(needsManual && {
           business_name: businessName,
           address: address || undefined,
@@ -348,6 +350,23 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
             />
             <span className="form-hint">
               Paste the client&apos;s Google Maps or Google Review URL. We&apos;ll resolve the business details automatically.
+            </span>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="custom-context-input">
+              ✨ Business Details &amp; Highlights (Optional)
+            </label>
+            <textarea
+              id="custom-context-input"
+              className="form-input"
+              rows={2}
+              placeholder="e.g. Famous for Paneer Butter Masala &amp; Garlic Naan, quick home delivery, valet parking"
+              value={customContext}
+              onChange={(e) => setCustomContext(e.target.value)}
+            />
+            <span className="form-hint">
+              Add popular dishes, key services, or specialties to make AI-generated reviews feel authentic and personalized.
             </span>
           </div>
 

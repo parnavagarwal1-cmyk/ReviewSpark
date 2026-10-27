@@ -25,14 +25,14 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Parse and validate request ────────────────────────────────────────────
-  let body: { token?: string; rating?: number };
+  let body: { token?: string; rating?: number; customer_note?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { token, rating } = body;
+  const { token, rating, customer_note } = body;
 
   if (!token || typeof token !== 'string' || token.length > 50) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
@@ -46,14 +46,25 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Resolve token to business ─────────────────────────────────────────────
-  const { data: business, error: dbError } = await supabase
+  let businessQuery = await supabase
     .from('businesses')
-    .select('id, business_name, address, category, is_active')
+    .select('id, business_name, address, category, is_active, custom_context')
     .eq('public_token', token)
     .eq('is_active', true)
     .single();
 
-  if (dbError || !business) {
+  if (businessQuery.error && businessQuery.error.message.includes('custom_context')) {
+    businessQuery = await supabase
+      .from('businesses')
+      .select('id, business_name, address, category, is_active')
+      .eq('public_token', token)
+      .eq('is_active', true)
+      .single();
+  }
+
+  const business = businessQuery.data;
+
+  if (businessQuery.error || !business) {
     return NextResponse.json({ error: 'Business not found' }, { status: 404 });
   }
 
@@ -102,7 +113,9 @@ export async function POST(request: NextRequest) {
       business.business_name,
       business.category,
       business.address,
-      rating
+      rating,
+      (business as { custom_context?: string | null }).custom_context,
+      customer_note
     );
 
     // Record analytics (fire-and-forget)

@@ -42,6 +42,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       'category',
       'is_active',
       'google_review_url',
+      'custom_context',
     ];
 
     const updateData: Partial<UpdateBusinessInput> = {};

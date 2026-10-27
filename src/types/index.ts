@@ -16,6 +16,7 @@ export interface Business {
   created_at: string;
   updated_at: string;
   google_data_refreshed_at: string | null;
+  custom_context?: string | null;
 }
 
 export interface BusinessStats extends Business {
@@ -62,6 +63,7 @@ export interface CreateBusinessInput {
   business_name?: string;   // required if data_source ends up 'manual'
   address?: string;
   category?: string;
+  custom_context?: string;
 }
 
 export interface UpdateBusinessInput {
@@ -70,11 +72,13 @@ export interface UpdateBusinessInput {
   category?: string;
   is_active?: boolean;
   google_review_url?: string;
+  custom_context?: string;
 }
 
 export interface DraftGenerationInput {
   token: string;
   rating: number;       // 1–5
+  customer_note?: string; // Optional user experience note
 }
 
 export interface DraftGenerationOutput {

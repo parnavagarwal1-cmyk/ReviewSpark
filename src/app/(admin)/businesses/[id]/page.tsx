@@ -16,7 +16,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
   const [refreshing, setRefreshing] = useState(false);
   const [qrDataUri, setQrDataUri] = useState('');
   const [editMode, setEditMode] = useState(false);
-  const [editData, setEditData] = useState({ business_name: '', address: '', category: '' });
+  const [editData, setEditData] = useState({ business_name: '', address: '', category: '', custom_context: '' });
   const [saving, setSaving] = useState(false);
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -48,6 +48,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
           business_name: data.business_name,
           address: data.address ?? '',
           category: data.category ?? '',
+          custom_context: data.custom_context ?? '',
         });
         // Load QR preview
         await loadQrPreview(data.public_token);
@@ -210,6 +211,22 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
                   onChange={(e) => setEditData((d) => ({ ...d, category: e.target.value }))}
                 />
               </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-highlights">
+                  ✨ Business Details &amp; Highlights (for AI Reviews)
+                </label>
+                <textarea
+                  id="edit-highlights"
+                  className="form-input"
+                  rows={3}
+                  placeholder="e.g. Famous for Paneer Tikka, Quick Delivery, Rooftop ambience, 15+ years trusted"
+                  value={editData.custom_context}
+                  onChange={(e) => setEditData((d) => ({ ...d, custom_context: e.target.value }))}
+                />
+                <span className="form-hint">
+                  AI will use these details to write highly personalized, authentic reviews without hallucinating.
+                </span>
+              </div>
               <button
                 className="btn btn-primary btn-sm"
                 onClick={handleSave}
@@ -224,6 +241,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
               <InfoRow label="Name" value={business.business_name} />
               <InfoRow label="Address" value={business.address || '—'} />
               <InfoRow label="Category" value={business.category || '—'} />
+              <InfoRow label="AI Highlights" value={business.custom_context || 'None set (click Edit to add)'} />
               <InfoRow label="Place ID" value={business.place_id || '—'} mono />
               <InfoRow label="Token" value={business.public_token} mono />
               <InfoRow label="Data Source" value={business.data_source} />

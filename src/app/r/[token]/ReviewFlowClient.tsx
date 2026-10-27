@@ -28,6 +28,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
 
   const [selectedRating, setSelectedRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
+  const [customerNote, setCustomerNote] = useState('');
 
   const [drafts, setDrafts] = useState<[string, string] | null>(null);
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<0 | 1>(0);
@@ -70,7 +71,11 @@ export default function ReviewFlowClient({ token }: { token: string }) {
       const res = await fetch('/api/review/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, rating }),
+        body: JSON.stringify({
+          token,
+          rating,
+          customer_note: customerNote.trim() || undefined,
+        }),
       });
 
       const data = await res.json();
@@ -270,6 +275,26 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   STAR_LABELS[hoverRating || selectedRating] ?? 'Tap a star to rate'
                 )}
               </div>
+
+              {step === 'select-rating' && (
+                <div style={{ marginTop: '1.25rem', textAlign: 'left', width: '100%', maxWidth: '340px', margin: '1.25rem auto 0' }}>
+                  <label htmlFor="customer-note-input" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--public-text)', display: 'block', marginBottom: '0.35rem' }}>
+                    ✍️ Add specific details or dishes? (Optional)
+                  </label>
+                  <input
+                    id="customer-note-input"
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Loved the Butter Chicken, fast delivery"
+                    value={customerNote}
+                    onChange={(e) => setCustomerNote(e.target.value)}
+                    style={{ background: '#ffffff', borderColor: '#cbd5e1', color: '#1e293b', fontSize: '0.85rem' }}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: 'var(--public-text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                    Tap a star above and AI will personalize your review with this!
+                  </span>
+                </div>
+              )}
 
               {generateError && step === 'select-rating' && (
                 <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '0.85rem', color: '#991b1b', textAlign: 'center' }}>

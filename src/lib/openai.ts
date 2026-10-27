@@ -110,7 +110,9 @@ export async function generateReviewDrafts(
   businessName: string,
   businessCategory: string | null,
   businessAddress: string | null,
-  rating: number
+  rating: number,
+  customContext?: string | null,
+  customerNote?: string | null
 ): Promise<DraftResult> {
   if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
     throw new Error('Rating must be an integer between 1 and 5');
@@ -125,6 +127,12 @@ export async function generateReviewDrafts(
   const addressContext = businessAddress
     ? `Location: ${businessAddress}`
     : '';
+  const highlightsContext = customContext?.trim()
+    ? `Business Highlights & Specialties: ${customContext.trim()}`
+    : '';
+  const customerNoteContext = customerNote?.trim()
+    ? `Customer Experience Note: "${customerNote.trim()}"`
+    : '';
 
   const systemPrompt = `You are a helpful assistant that writes short, genuine Google Review drafts in Hinglish (a natural blend of Hindi and English commonly used in India).
 
@@ -133,18 +141,21 @@ STRICT RULES — follow these exactly:
 2. Each draft must be 30–65 words maximum
 3. The tone must match the rating: ${sentiment}
 4. Write in natural Hinglish (Roman script, mix of conversational Hindi and English)
-5. DO NOT invent specific details: no staff names, no dishes ordered, no specific products, no specific incidents
-6. Keep wording general and authentic, consistent with the star rating
-7. No emojis, hashtags, or promotional language
-8. These are SUGGESTIONS — the customer will edit before posting
-9. Do not start both drafts with the same word or phrase`;
+5. If "Business Highlights" or "Customer Experience Note" are provided, seamlessly weave them into the reviews so they feel authentic and personalized.
+6. DO NOT invent unmentioned specific facts (do not invent staff names, dishes, or products that were not mentioned).
+7. Keep wording authentic, natural, and consistent with the star rating
+8. No emojis, hashtags, or marketing buzzwords
+9. These are SUGGESTIONS — the customer will review and edit before posting
+10. Do not start both drafts with the same word or phrase`;
 
   const userPrompt = `Business: ${businessName}
 ${categoryContext}
 ${addressContext}
+${highlightsContext}
+${customerNoteContext}
 Customer rating: ${rating}/5 stars (${sentiment})
 
-Generate 2 short Hinglish review drafts for this business. Remember: do NOT make up specific facts.`;
+Generate 2 short, personalized Hinglish review drafts for this business.`;
 
   const response = await client.chat.completions.create({
     model,

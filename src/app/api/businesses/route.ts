@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         address: googleData?.address ?? body.address ?? null,
         category: googleData?.category ?? body.category ?? null,
         data_source: googleData ? 'google_places' : 'manual',
+        custom_context: body.custom_context?.trim() || null,
         google_review_destination:
           googleData?.google_review_destination ?? reviewUrl,
         google_data_refreshed_at: googleData ? new Date().toISOString() : null,
