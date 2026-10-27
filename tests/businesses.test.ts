@@ -34,8 +34,7 @@ describe('Google Places Utilities', () => {
 
     it('extracts Place ID from place_id query param', () => {
       const url = 'https://www.google.com/maps/place/?q=place_id:ChIJtest';
-      // place_id param isn't in this URL, should return null
-      expect(extractPlaceIdFromUrl(url)).toBeNull();
+      expect(extractPlaceIdFromUrl(url)).toBe('ChIJtest');
     });
 
     it('returns null for URLs without Place ID', () => {

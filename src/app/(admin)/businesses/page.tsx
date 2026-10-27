@@ -274,12 +274,10 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
     try {
       const body: CreateBusinessInput = {
         google_review_url: googleUrl,
+        business_name: businessName.trim() || undefined,
+        address: address.trim() || undefined,
+        category: category.trim() || undefined,
         custom_context: customContext.trim() || undefined,
-        ...(needsManual && {
-          business_name: businessName,
-          address: address || undefined,
-          category: category || undefined,
-        }),
       };
 
       const res = await fetch('/api/businesses', {
@@ -354,6 +352,26 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
           </div>
 
           <div className="form-group">
+            <label className="form-label" htmlFor="business-name-input">
+              Business Name {needsManual ? '*' : '(Optional — auto-detected if empty)'}
+            </label>
+            <input
+              id="business-name-input"
+              type="text"
+              className="form-input"
+              placeholder="e.g. Sharma Sweets"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              required={needsManual}
+            />
+            <span className="form-hint">
+              {needsManual
+                ? 'Please enter the client business name to complete setup.'
+                : 'Leave blank to auto-detect from Google Maps URL, or type it here.'}
+            </span>
+          </div>
+
+          <div className="form-group">
             <label className="form-label" htmlFor="custom-context-input">
               ✨ Business Details &amp; Highlights (Optional)
             </label>
@@ -372,27 +390,8 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
 
           {needsManual && (
             <>
-              <div className="alert alert-warning">
-                ⚠️ Could not auto-resolve business from Google API. Please enter details manually.
-              </div>
-
               <div className="form-group">
-                <label className="form-label" htmlFor="business-name-input">
-                  Business Name *
-                </label>
-                <input
-                  id="business-name-input"
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Sharma's Dhaba"
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  required={needsManual}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="address-input">Address</label>
+                <label className="form-label" htmlFor="address-input">Address (Optional)</label>
                 <input
                   id="address-input"
                   type="text"
@@ -404,7 +403,7 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="category-input">Category</label>
+                <label className="form-label" htmlFor="category-input">Category (Optional)</label>
                 <input
                   id="category-input"
                   type="text"
@@ -417,7 +416,7 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
             </>
           )}
 
-          {error && !needsManual && (
+          {error && (
             <div className="alert alert-error">{error}</div>
           )}
 
@@ -432,17 +431,17 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={loading || !googleUrl || (needsManual && !businessName)}
+              disabled={loading || !googleUrl || (needsManual && !businessName.trim())}
               id="add-business-submit-btn"
               style={{ flex: 1 }}
             >
               {loading ? (
                 <>
                   <span className="spinner" />
-                  {needsManual ? 'Creating…' : 'Resolving…'}
+                  Adding Business…
                 </>
               ) : (
-                needsManual ? 'Add Business Manually' : 'Add Business'
+                'Add Business'
               )}
             </button>
           </div>

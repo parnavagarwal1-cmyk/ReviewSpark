@@ -32,17 +32,20 @@ export function extractPlaceIdFromUrl(url: string): string | null {
   try {
     const u = new URL(url);
 
-    // Format: maps.google.com/?cid=... (legacy)
-    const cid = u.searchParams.get('cid');
-    if (cid) return null; // CID != Place ID; needs text search
+    // Format: placeid=... or place_id=... (e.g. search.google.com/local/writereview?placeid=ChIJ...)
+    const placeId = u.searchParams.get('placeid') || u.searchParams.get('place_id');
+    if (placeId) return placeId;
 
     // Format: maps.google.com/maps/place/.../@lat,lng,z/data=!...!1s<placeId>
     const match = url.match(/!1s(ChIJ[A-Za-z0-9_-]+)/);
     if (match) return match[1];
 
-    // Format: google.com/maps/place/...?...&place_id=...
-    const placeId = u.searchParams.get('place_id');
-    if (placeId) return placeId;
+    // Format: query=place_id:ChIJ...
+    const q = u.searchParams.get('q');
+    if (q && q.includes('place_id:')) {
+      const qMatch = q.match(/place_id:([A-Za-z0-9_-]+)/);
+      if (qMatch) return qMatch[1];
+    }
 
     return null;
   } catch {
@@ -60,11 +63,39 @@ export function extractNameHintFromUrl(url: string): string | null {
     const pathParts = u.pathname.split('/');
     const placeIndex = pathParts.indexOf('place');
     if (placeIndex !== -1 && pathParts[placeIndex + 1]) {
-      return decodeURIComponent(pathParts[placeIndex + 1].replace(/\+/g, ' '));
+      const raw = decodeURIComponent(pathParts[placeIndex + 1].replace(/\+/g, ' '));
+      return raw.split('@')[0].trim();
     }
+
+    // Format: /maps/search/BUSINESS+NAME
+    const searchIndex = pathParts.indexOf('search');
+    if (searchIndex !== -1 && pathParts[searchIndex + 1]) {
+      const raw = decodeURIComponent(pathParts[searchIndex + 1].replace(/\+/g, ' '));
+      return raw.split('@')[0].trim();
+    }
+
     return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Follows redirects for short URLs like maps.app.goo.gl or g.page
+ */
+export async function followGoogleRedirect(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.url || url;
+  } catch {
+    return url;
   }
 }
 
@@ -80,6 +111,8 @@ export function validateGoogleReviewUrl(url: string): boolean {
       'maps.google.com',
       'www.google.com',
       'goo.gl',
+      'g.page',
+      'search.google.com',
     ];
     const host = u.hostname.toLowerCase();
     return allowedHosts.some((allowed) => host === allowed || host.endsWith('.' + allowed));
@@ -205,28 +238,49 @@ export function buildReviewUrl(placeId: string): string {
 
 /**
  * Main entry point: resolve a Google Review URL to structured business data.
- * 1. Try to extract Place ID directly from the URL
- * 2. Try text search using name hint from URL
- * 3. Return null if all methods fail (caller should prompt for manual entry)
+ * 1. Follow short link redirects (maps.app.goo.gl, g.page, goo.gl)
+ * 2. Try to extract Place ID directly from the URL
+ * 3. Use Places API if key is present
+ * 4. Fallback to extracting name and destination directly from the URL (no API key required)
  */
 export async function resolveGoogleReviewUrl(
   url: string
 ): Promise<PlacesBusinessData | null> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) return null;
+  // Step 1: Follow any redirect (e.g. maps.app.goo.gl, g.page)
+  const resolvedUrl = await followGoogleRedirect(url);
 
-  // Step 1: Extract Place ID from URL
-  const placeId = extractPlaceIdFromUrl(url);
-  if (placeId) {
-    const details = await fetchPlaceDetails(placeId);
-    if (details) return details;
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  const isRealApiKey = apiKey && !apiKey.startsWith('AIza...');
+
+  // Step 2: Try Place ID extraction
+  const placeId = extractPlaceIdFromUrl(resolvedUrl) || extractPlaceIdFromUrl(url);
+
+  // If real Google API key is configured, use official Places API
+  if (isRealApiKey) {
+    if (placeId) {
+      const details = await fetchPlaceDetails(placeId);
+      if (details) return details;
+    }
+
+    const nameHint = extractNameHintFromUrl(resolvedUrl) || extractNameHintFromUrl(url);
+    if (nameHint) {
+      const textResult = await textSearchBusiness(nameHint);
+      if (textResult) return textResult;
+    }
   }
 
-  // Step 2: Text search using name from URL
-  const nameHint = extractNameHintFromUrl(url);
-  if (nameHint) {
-    const textResult = await textSearchBusiness(nameHint);
-    if (textResult) return textResult;
+  // Step 3: Zero-API-Key Smart Extraction Fallback
+  // If no Google API key is set, extract business name and destination directly from URL!
+  const nameHint = extractNameHintFromUrl(resolvedUrl) || extractNameHintFromUrl(url);
+  if (nameHint || placeId) {
+    return {
+      place_id: placeId ?? '',
+      business_name: nameHint || 'Google Business',
+      address: null,
+      category: null,
+      google_review_destination: placeId ? buildReviewUrl(placeId) : url,
+      data_source: 'google_places',
+    };
   }
 
   return null;
