@@ -98,74 +98,77 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
     }
   }
 
-  async function handleToggleActive() {
-    if (!business) return;
-    const res = await fetch(`/api/businesses/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: !business.is_active }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setBusiness(updated);
-    }
-  }
-
-  const reviewPageUrl = business ? `${baseUrl}/r/${business.public_token}` : '';
-
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--admin-text-muted)' }}>
+      <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
         <div className="spinner spinner-dark" style={{ margin: '0 auto 1rem' }} />
-        Loading…
+        Loading business details…
       </div>
     );
   }
 
   if (error || !business) {
     return (
-      <div>
-        <Link href="/businesses" className="btn btn-ghost" style={{ marginBottom: '1rem' }}>
-          ← Back
+      <div className="alert alert-error">
+        {error || 'Business not found'}
+        <Link href="/businesses" style={{ marginLeft: '1rem', textDecoration: 'underline' }}>
+          Back to list
         </Link>
-        <div className="alert alert-error">{error || 'Business not found'}</div>
       </div>
     );
   }
 
+  const reviewPageUrl = `${baseUrl}/r/${business.public_token}`;
+
   return (
     <>
+      <div style={{ marginBottom: 'var(--space-md)' }}>
+        <Link
+          href="/businesses"
+          style={{ color: 'var(--admin-text-muted)', fontSize: '0.875rem' }}
+        >
+          ← Back to Businesses
+        </Link>
+      </div>
+
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Link href="/businesses" className="btn btn-ghost btn-sm">← Back</Link>
-          <div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <h1 className="page-title">{business.business_name}</h1>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', alignItems: 'center' }}>
-              <span className={`badge ${business.is_active ? 'badge-success' : 'badge-danger'}`}>
-                {business.is_active ? '● Active' : '○ Inactive'}
-              </span>
-              <span className={`badge ${business.data_source === 'google_places' ? 'badge-info' : 'badge-warning'}`}>
-                {business.data_source === 'google_places' ? '🔍 Google' : '✏️ Manual'}
-              </span>
-            </div>
+            <span
+              className={`badge ${business.is_active ? 'badge-success' : 'badge-danger'}`}
+            >
+              {business.is_active ? 'Active' : 'Inactive'}
+            </span>
+            <span
+              className={`badge ${business.data_source === 'google_places' ? 'badge-info' : 'badge-warning'}`}
+            >
+              {business.data_source === 'google_places' ? '🔍 Google Places' : '✏️ Manual'}
+            </span>
           </div>
+          <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
+            Added {new Date(business.created_at).toLocaleDateString()}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleToggleActive}
-            id="toggle-active-btn"
-          >
-            {business.is_active ? 'Deactivate' : 'Activate'}
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            id="refresh-data-btn"
-          >
-            {refreshing ? <><span className="spinner" /> Refreshing…</> : '🔄 Refresh Data'}
-          </button>
+
+        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+          {business.data_source === 'google_places' && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              id="refresh-google-data-btn"
+              title="Refresh name, address, category from Google Places (max once per 30 days recommended)"
+            >
+              {refreshing ? (
+                <>
+                  <span className="spinner" /> Refreshing…
+                </>
+              ) : (
+                '🔄 Refresh Google Data'
+              )}
+            </button>
+          )}
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setEditMode(!editMode)}
@@ -241,6 +244,40 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
               <InfoRow label="Name" value={business.business_name} />
               <InfoRow label="Address" value={business.address || '—'} />
               <InfoRow label="Category" value={business.category || '—'} />
+              <InfoRow
+                label="Google Maps"
+                value={
+                  business.google_maps_url ? (
+                    <a
+                      href={business.google_maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--brand-primary-light)', textDecoration: 'underline' }}
+                    >
+                      View on Maps ↗
+                    </a>
+                  ) : (
+                    '—'
+                  )
+                }
+              />
+              <InfoRow
+                label="Review Link"
+                value={
+                  business.google_review_url ? (
+                    <a
+                      href={business.google_review_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--brand-primary-light)', textDecoration: 'underline' }}
+                    >
+                      Verify Review Link ↗
+                    </a>
+                  ) : (
+                    '—'
+                  )
+                }
+              />
               <InfoRow label="AI Highlights" value={business.custom_context || 'None set (click Edit to add)'} />
               <InfoRow label="Place ID" value={business.place_id || '—'} mono />
               <InfoRow label="Token" value={business.public_token} mono />
@@ -356,7 +393,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--admin-border)', fontSize: '0.875rem', gap: '1rem' }}>
       <span style={{ color: 'var(--admin-text-muted)', flexShrink: 0 }}>{label}</span>

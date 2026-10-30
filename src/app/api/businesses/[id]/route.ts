@@ -42,6 +42,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       'category',
       'is_active',
       'google_review_url',
+      'google_maps_url',
       'custom_context',
     ];
 

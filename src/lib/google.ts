@@ -12,6 +12,8 @@
  * admin UI prompts for manual business details.
  */
 
+import type { GooglePlaceSearchResult, GooglePlaceDetailsResult } from '@/types';
+
 const PLACES_API_BASE = 'https://places.googleapis.com/v1';
 const PLACES_LEGACY_BASE = 'https://maps.googleapis.com/maps/api/place';
 
@@ -284,4 +286,156 @@ export async function resolveGoogleReviewUrl(
   }
 
   return null;
+}
+
+/**
+ * Searches Google Places (New) using Text Search.
+ * Returns up to 10 matching businesses with Place ID, Name, Address, and Google Maps link.
+ */
+export async function searchGooglePlaces(
+  businessName: string,
+  location?: string
+): Promise<{ results: GooglePlaceSearchResult[]; error?: string }> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey || apiKey.startsWith('AIza...')) {
+    return {
+      results: [],
+      error:
+        'Google Places API key is not configured. Please add a valid GOOGLE_PLACES_API_KEY to your .env.local file.',
+    };
+  }
+
+  const trimmedName = businessName.trim();
+  const trimmedLoc = location?.trim();
+  if (!trimmedName) {
+    return { results: [], error: 'Business name is required for search.' };
+  }
+
+  const textQuery = trimmedLoc ? `${trimmedName} in ${trimmedLoc}` : trimmedName;
+
+  try {
+    const fieldMask =
+      'places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.primaryType';
+    const res = await fetch(`${PLACES_API_BASE}/places:searchText`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': fieldMask,
+      },
+      body: JSON.stringify({
+        textQuery,
+        pageSize: 10,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Google Places API returned status ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error?.message) {
+          errorMsg = errJson.error.message;
+        }
+      } catch {
+        // ignore json parse error
+      }
+      return { results: [], error: errorMsg };
+    }
+
+    const data = await res.json();
+    const rawPlaces = Array.isArray(data.places) ? data.places : [];
+
+    const results: GooglePlaceSearchResult[] = rawPlaces.slice(0, 10).map((p: {
+      id?: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+      googleMapsUri?: string;
+      primaryType?: string;
+    }) => ({
+      id: p.id || '',
+      displayName: p.displayName?.text || 'Unknown Business',
+      formattedAddress: p.formattedAddress || null,
+      googleMapsUri: p.googleMapsUri || null,
+      primaryType: p.primaryType || null,
+    }));
+
+    return { results };
+  } catch (err) {
+    console.error('[google] searchGooglePlaces error:', err);
+    return {
+      results: [],
+      error: err instanceof Error ? err.message : 'Failed to search Google Places',
+    };
+  }
+}
+
+/**
+ * Fetches Place Details from Google Places API (New) including the official writeAReviewUri.
+ */
+export async function fetchPlaceDetailsWithReviewUrl(
+  placeId: string
+): Promise<{ data: GooglePlaceDetailsResult | null; error?: string }> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey || apiKey.startsWith('AIza...')) {
+    return {
+      data: null,
+      error:
+        'Google Places API key is not configured. Please add a valid GOOGLE_PLACES_API_KEY to your .env.local file.',
+    };
+  }
+
+  const cleanPlaceId = placeId.trim();
+  if (!cleanPlaceId) {
+    return { data: null, error: 'Place ID is required.' };
+  }
+
+  try {
+    const fieldMask =
+      'id,displayName,formattedAddress,googleMapsUri,googleMapsLinks.writeAReviewUri,primaryType';
+    const res = await fetch(
+      `${PLACES_API_BASE}/places/${encodeURIComponent(cleanPlaceId)}`,
+      {
+        method: 'GET',
+        headers: {
+          'X-Goog-Api-Key': apiKey,
+          'X-Goog-FieldMask': fieldMask,
+        },
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+
+    if (!res.ok) {
+      let errorMsg = `Google Places API returned status ${res.status}`;
+      try {
+        const errJson = await res.json();
+        if (errJson?.error?.message) {
+          errorMsg = errJson.error.message;
+        }
+      } catch {
+        // ignore json parse error
+      }
+      return { data: null, error: errorMsg };
+    }
+
+    const details = await res.json();
+
+    const result: GooglePlaceDetailsResult = {
+      id: details.id || cleanPlaceId,
+      displayName: details.displayName?.text || 'Unknown Business',
+      formattedAddress: details.formattedAddress || null,
+      googleMapsUri: details.googleMapsUri || null,
+      writeAReviewUri: details.googleMapsLinks?.writeAReviewUri || null,
+      primaryType: details.primaryType || null,
+    };
+
+    return { data: result };
+  } catch (err) {
+    console.error('[google] fetchPlaceDetailsWithReviewUrl error:', err);
+    return {
+      data: null,
+      error:
+        err instanceof Error ? err.message : 'Failed to fetch Google Place details',
+    };
+  }
 }

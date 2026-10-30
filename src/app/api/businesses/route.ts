@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('businesses')
     .select(
-      'id, public_token, business_name, address, category, data_source, is_active, created_at, updated_at, google_data_refreshed_at, google_review_url, place_id, google_review_destination',
+      'id, public_token, business_name, address, category, data_source, is_active, created_at, updated_at, google_data_refreshed_at, google_review_url, google_maps_url, place_id, google_review_destination, custom_context',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
@@ -80,8 +80,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Attempt to resolve via Google Places API
-    const googleData = await resolveGoogleReviewUrl(reviewUrl);
+    const cleanPlaceId = body.place_id?.trim() || null;
+
+    // Check for duplicate place_id if provided directly
+    if (cleanPlaceId) {
+      const { data: existing } = await supabase
+        .from('businesses')
+        .select('id, business_name, public_token')
+        .eq('place_id', cleanPlaceId)
+        .maybeSingle();
+
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: `This business is already registered as "${existing.business_name}".`,
+            existing_id: existing.id,
+            existing_token: existing.public_token,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Attempt to resolve via Google Places API if place_id wasn't passed
+    const googleData = cleanPlaceId ? null : await resolveGoogleReviewUrl(reviewUrl);
+
+    // If resolved place_id from URL, check for duplicate as well
+    if (googleData?.place_id) {
+      const { data: existing } = await supabase
+        .from('businesses')
+        .select('id, business_name, public_token')
+        .eq('place_id', googleData.place_id)
+        .maybeSingle();
+
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: `This business is already registered as "${existing.business_name}".`,
+            existing_id: existing.id,
+            existing_token: existing.public_token,
+          },
+          { status: 409 }
+        );
+      }
+    }
 
     // Generate unique public token
     let publicToken: string;
@@ -106,11 +148,11 @@ export async function POST(request: NextRequest) {
 
     // Build the business record
     const businessName =
+      body.business_name?.trim() ||
       googleData?.business_name ||
-      body.business_name ||
       'Unnamed Business';
 
-    if (!googleData && !body.business_name) {
+    if (!googleData && !body.business_name?.trim()) {
       return NextResponse.json(
         {
           error:
@@ -122,20 +164,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const placeIdToSave = cleanPlaceId || googleData?.place_id || null;
+    const googleMapsUrlToSave = body.google_maps_url?.trim() || null;
+
     const { data, error } = await supabase
       .from('businesses')
       .insert({
         public_token: publicToken,
         google_review_url: reviewUrl,
-        place_id: googleData?.place_id ?? null,
+        google_maps_url: googleMapsUrlToSave,
+        place_id: placeIdToSave,
         business_name: businessName,
-        address: googleData?.address ?? body.address ?? null,
-        category: googleData?.category ?? body.category ?? null,
-        data_source: googleData ? 'google_places' : 'manual',
+        address: body.address?.trim() || googleData?.address || null,
+        category: body.category?.trim() || googleData?.category || null,
+        data_source: placeIdToSave || googleData ? 'google_places' : 'manual',
         custom_context: body.custom_context?.trim() || null,
         google_review_destination:
           googleData?.google_review_destination ?? reviewUrl,
-        google_data_refreshed_at: googleData ? new Date().toISOString() : null,
+        google_data_refreshed_at:
+          placeIdToSave || googleData ? new Date().toISOString() : null,
       })
       .select()
       .single();
