@@ -45,6 +45,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   const [aiUnavailable, setAiUnavailable] = useState(false);
 
   const [copied, setCopied] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load business context
@@ -133,6 +134,34 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   function handleSelectDraft(index: 0 | 1) {
     setSelectedDraftIndex(index);
     setEditedDraft(drafts![index]);
+  }
+
+  async function handleRegenerate() {
+    if (!selectedRating || isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+      const res = await fetch('/api/review/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          rating: selectedRating,
+          customer_note: customerNote.trim() || undefined,
+          selected_aspects: selectedAspects,
+          selected_tags: selectedTags,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.drafts) {
+        setDrafts(data.drafts);
+        setEditedDraft(data.drafts[selectedDraftIndex]);
+      }
+    } catch {
+      // keep existing drafts
+    } finally {
+      setIsRegenerating(false);
+    }
   }
 
   async function handleCopy() {
@@ -458,9 +487,35 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                 <div className="drafts-section">
                   <div className="drafts-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>🤖 AI Suggestions (Pick your language)</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--public-text-muted)' }}>
-                      Tap to select &amp; edit
-                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRegenerate}
+                      disabled={isRegenerating}
+                      title="Generate completely new reviews with different style and length"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        color: '#4f46e5',
+                        background: 'rgba(79, 70, 229, 0.08)',
+                        border: '1px solid rgba(79, 70, 229, 0.25)',
+                        borderRadius: '12px',
+                        padding: '3px 10px',
+                        cursor: isRegenerating ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <span className="spinner spinner-dark" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                          Fresh ideas…
+                        </>
+                      ) : (
+                        <>🔄 Fresh Ideas</>
+                      )}
+                    </button>
                   </div>
 
                   {drafts.map((draft, i) => {

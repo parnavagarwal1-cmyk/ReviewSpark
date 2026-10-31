@@ -98,6 +98,54 @@ const STAR_SENTIMENTS: Record<number, string> = {
   5: 'extremely happy and delighted (5 out of 5 stars - highly recommended)',
 };
 
+const STYLE_PERSPECTIVES = [
+  'Perspective: First-time visitor who was pleasantly surprised by the warm reception, speed, and ease of service.',
+  'Perspective: Straight-to-the-point customer focusing strictly on efficiency, punctuality, and clean environment without fluff.',
+  'Perspective: Local resident from the neighborhood who appreciates having such a reliable, genuine service nearby.',
+  'Perspective: Relieved customer whose specific issue was diagnosed and handled gently, patiently, and without discomfort.',
+  'Perspective: Value-conscious customer who appreciates transparent explanations, fair pricing, and zero pushiness.',
+  'Perspective: Walk-in or appointment visitor who noticed great attention to hygiene, respectful staff, and smooth workflow.',
+  'Perspective: Highly satisfied customer who felt comfortable from start to finish and would bring family members here.',
+];
+
+const LENGTH_PROFILES = [
+  {
+    d1: 'CRISP & PUNCHY (14–24 words, 1–2 short impactful sentences)',
+    d2: 'BALANCED & CONVERSATIONAL (35–55 words, 2–3 sentences)',
+  },
+  {
+    d1: 'DETAILED & DESCRIPTIVE (45–75 words, 3–4 sentences with specific observations)',
+    d2: 'SHORT & DIRECT (15–25 words, 1–2 punchy sentences)',
+  },
+  {
+    d1: 'MEDIUM & NATURAL (28–42 words, 2 sentences)',
+    d2: 'RICHER NARRATIVE (50–75 words, 3–4 sentences)',
+  },
+  {
+    d1: 'CONCISE RECOMMENDATION (18–28 words)',
+    d2: 'MODERATE & DETAILED (35–52 words)',
+  },
+];
+
+// Emojis should only appear in SOME drafts, never all drafts, and never spam
+function getEmojiDirective(rating: number): string {
+  if (rating <= 3) {
+    return 'NO EMOJIS in either draft. Keep the text clean, respectful, and completely emoji-free.';
+  }
+
+  const dice = Math.random();
+  if (dice < 0.38) {
+    // Draft 1 has zero emojis, Draft 2 has 1-2 emojis
+    return 'Draft 1 MUST have ZERO emojis (clean, professional text only). Draft 2 may include 1 or at most 2 natural emojis (e.g. 👍, 😊, ⭐, 💯) placed naturally. Never use more than 2 emojis.';
+  } else if (dice < 0.76) {
+    // Draft 1 has 1-2 emojis, Draft 2 has zero emojis
+    return 'Draft 1 may include 1 or at most 2 natural emojis (e.g. 👍, 😊, ⭐, 💯) placed naturally. Draft 2 MUST have ZERO emojis (clean text only). Never use more than 2 emojis.';
+  } else {
+    // Neither draft has emojis
+    return 'BOTH Draft 1 and Draft 2 MUST have ZERO emojis (completely clean, authentic plain text).';
+  }
+}
+
 export interface GenerateDraftOptions {
   customContext?: string | null;
   customerNote?: string | null;
@@ -115,6 +163,7 @@ export interface GenerateDraftOptions {
  * Generates two review draft options:
  * - Draft 1: Primary language (default English)
  * - Draft 2: Secondary language (default Hinglish)
+ * Features dynamic length contrast, varied style perspectives, and selective emojis.
  */
 export async function generateReviewDrafts(
   businessName: string,
@@ -178,18 +227,46 @@ export async function generateReviewDrafts(
   const lang1 = options.primaryLanguage?.trim() || 'English';
   const lang2 = options.secondaryLanguage?.trim() || 'Hinglish (conversational Hindi + English blend in Roman script)';
 
-  const systemPrompt = `You are a helpful assistant that writes authentic, human-sounding Google Review drafts for customers.
+  const stylePerspective =
+    STYLE_PERSPECTIVES[Math.floor(Math.random() * STYLE_PERSPECTIVES.length)];
+  const lengthProfile =
+    LENGTH_PROFILES[Math.floor(Math.random() * LENGTH_PROFILES.length)];
+  const emojiDirective = getEmojiDirective(rating);
+  const variationSeed = Math.random().toString(36).substring(2, 8);
 
-STRICT INSTRUCTIONS:
-1. Write EXACTLY 2 distinct draft options:
-   - "Draft 1:" must be written in pure, natural ${lang1}.
-   - "Draft 2:" must be written in authentic conversational ${lang2} (Roman script, as spoken in India).
-2. Word count: Each draft must be 30–65 words.
-3. Tone must strictly match the customer rating: ${sentiment}.
-4. Naturally incorporate any highlighted aspects, customer tags, service keywords, or customer personal notes provided.
-5. DO NOT invent specific unmentioned facts (do not invent staff names, prices, or fake items).
-6. No emojis, no hashtags, no promotional marketing slogans.
-7. Keep the tone natural, genuine, and relatable.`;
+  const systemPrompt = `You are a helpful assistant that writes authentic, human-sounding Google Review drafts for customers.
+Every review you write must feel like a genuine, unique review posted by a real person on Google Maps.
+
+CRITICAL VARIETY & ANTI-REPETITION RULES:
+1. NEVER use generic AI opening clichés such as:
+   - "I recently visited..."
+   - "I had an amazing/wonderful experience at..."
+   - "I cannot recommend this place enough..."
+   - "If you are looking for..."
+   - "Top-notch service from start to finish..."
+   - "Look no further..."
+2. Start directly with an action, observation, situation, or distinct sentiment (e.g., "Got my checkup done today...", "Visited on a friend's recommendation...", "Super clean setup and zero waiting time...", "Dr. Sharma explained everything patiently without rushing...", "Really smooth appointment from start to end...").
+3. Each generation must sound completely fresh and different in phrasing, rhythm, and sentence structure.
+4. Tone must strictly match the customer rating: ${sentiment}.
+
+LANGUAGE & FORMAT INSTRUCTIONS:
+- Write EXACTLY 2 distinct draft options:
+  - "Draft 1:" must be written in natural ${lang1}.
+  - "Draft 2:" must be written in authentic conversational ${lang2} (Roman script, as spoken in India, e.g., "Treatment bilkul painless tha aur doctor sahab ka nature bohot accha hai...").
+
+LENGTH VARIATION (MUST DIFFER NOTICEABLY):
+- Draft 1 target length: ${lengthProfile.d1}.
+- Draft 2 target length: ${lengthProfile.d2}.
+- One draft MUST be distinctly shorter or longer than the other. NEVER make both drafts similar in length or identical in structure!
+
+EMOJI GUIDELINE:
+- ${emojiDirective}
+- Never spam emojis. Keep them subtle and human.
+
+GROUNDING & INTEGRATION:
+- Naturally incorporate any provided aspects, customer tags, service keywords, or customer personal notes.
+- DO NOT invent unmentioned specific facts (e.g., fake staff names, fake prices, or fake menu items).
+- Avoid marketing slogans or promotional corporate jargon.`;
 
   const userPrompt = `Business: ${businessName}
 ${categoryContext}
@@ -200,8 +277,10 @@ ${aspectsContext}
 ${tagsContext}
 ${customerNoteContext}
 Customer rating: ${rating}/5 stars (${sentiment})
+Writing angle: ${stylePerspective}
+Variety seed: ${variationSeed}
 
-Generate Draft 1 in ${lang1} and Draft 2 in ${lang2}.`;
+Generate Draft 1 in ${lang1} (${lengthProfile.d1}) and Draft 2 in ${lang2} (${lengthProfile.d2}).`;
 
   const response = await client.chat.completions.create({
     model,
@@ -209,8 +288,8 @@ Generate Draft 1 in ${lang1} and Draft 2 in ${lang2}.`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    max_tokens: 450,
-    temperature: 0.8,
+    max_tokens: 500,
+    temperature: 0.95,
   });
 
   const content = response.choices[0]?.message?.content ?? '';
@@ -238,8 +317,12 @@ function parseDrafts(content: string): [string, string] {
   const draft1Match = content.match(/Draft\s*1\s*[:：]\s*([\s\S]*?)(?=Draft\s*2\s*[:：]|$)/i);
   const draft2Match = content.match(/Draft\s*2\s*[:：]\s*([\s\S]*?)$/i);
 
-  const d1 = draft1Match?.[1]?.trim() ?? '';
-  const d2 = draft2Match?.[1]?.trim() ?? '';
+  let d1 = draft1Match?.[1]?.trim() ?? '';
+  let d2 = draft2Match?.[1]?.trim() ?? '';
+
+  // Clean any leading/trailing quotes or markdown backticks
+  d1 = d1.replace(/^["'`]+|["'`]+$/g, '').trim();
+  d2 = d2.replace(/^["'`]+|["'`]+$/g, '').trim();
 
   if (d1 && d2) {
     return [d1, d2];
@@ -248,7 +331,7 @@ function parseDrafts(content: string): [string, string] {
   // Fallback: split by double newline
   const parts = content
     .split(/\n\n+/)
-    .map((p) => p.trim())
+    .map((p) => p.replace(/^Draft\s*\d+\s*[:：]\s*/i, '').replace(/^["'`]+|["'`]+$/g, '').trim())
     .filter(Boolean);
 
   if (parts.length >= 2) {
