@@ -293,7 +293,8 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
           setNeedsManual(true);
           setError(data.error);
         } else {
-          setError(data.error ?? 'Failed to create business');
+          const detailMsg = data.details ? ` (${data.details})` : '';
+          setError(`${data.error || 'Failed to create business'}${detailMsg}`);
         }
         return;
       }

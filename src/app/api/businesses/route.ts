@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('[businesses GET] error:', error);
-    return NextResponse.json({ error: 'Database error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Database error' }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -122,30 +122,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const insertPayload: Record<string, unknown> = {
+      public_token: publicToken,
+      google_review_url: reviewUrl,
+      place_id: googleData?.place_id ?? null,
+      business_name: businessName,
+      address: googleData?.address ?? body.address ?? null,
+      category: googleData?.category ?? body.category ?? null,
+      data_source: googleData ? 'google_places' : 'manual',
+      google_review_destination:
+        googleData?.google_review_destination ?? reviewUrl,
+      google_data_refreshed_at: googleData ? new Date().toISOString() : null,
+    };
+
+    if (body.custom_context?.trim()) {
+      insertPayload.custom_context = body.custom_context.trim();
+    }
+
+    let insertRes = await supabase
       .from('businesses')
-      .insert({
-        public_token: publicToken,
-        google_review_url: reviewUrl,
-        place_id: googleData?.place_id ?? null,
-        business_name: businessName,
-        address: googleData?.address ?? body.address ?? null,
-        category: googleData?.category ?? body.category ?? null,
-        data_source: googleData ? 'google_places' : 'manual',
-        custom_context: body.custom_context?.trim() || null,
-        google_review_destination:
-          googleData?.google_review_destination ?? reviewUrl,
-        google_data_refreshed_at: googleData ? new Date().toISOString() : null,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
-    if (error) {
-      console.error('[businesses POST] insert error:', error);
-      return NextResponse.json({ error: 'Failed to create business' }, { status: 500 });
+    // Fallback: If custom_context column doesn't exist in Supabase yet, retry without it
+    if (
+      insertRes.error &&
+      insertPayload.custom_context &&
+      (insertRes.error.message?.includes('custom_context') || insertRes.error.code === 'PGRST204')
+    ) {
+      console.warn('[businesses POST] custom_context column missing in Supabase, retrying insert without it');
+      delete insertPayload.custom_context;
+      insertRes = await supabase
+        .from('businesses')
+        .insert(insertPayload)
+        .select()
+        .single();
     }
 
-    return NextResponse.json(data, { status: 201 });
+    if (insertRes.error) {
+      console.error('[businesses POST] insert error:', insertRes.error);
+      return NextResponse.json(
+        {
+          error: insertRes.error.message || 'Failed to create business in database.',
+          details: insertRes.error.details || insertRes.error.hint || null,
+          code: insertRes.error.code || null,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(insertRes.data, { status: 201 });
   } catch (err) {
     console.error('[businesses POST] error:', err);
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
