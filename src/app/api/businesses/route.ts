@@ -23,10 +23,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('businesses')
-    .select(
-      'id, public_token, business_name, address, category, data_source, is_active, created_at, updated_at, google_data_refreshed_at, google_review_url, place_id, google_review_destination',
-      { count: 'exact' }
-    )
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 
@@ -63,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Validate required field
     if (!body.google_review_url || typeof body.google_review_url !== 'string') {
       return NextResponse.json(
-        { error: 'google_review_url is required' },
+        { error: 'Google Review URL is required' },
         { status: 400 }
       );
     }
@@ -106,11 +103,11 @@ export async function POST(request: NextRequest) {
 
     // Build the business record
     const businessName =
+      body.business_name?.trim() ||
       googleData?.business_name ||
-      body.business_name ||
       'Unnamed Business';
 
-    if (!googleData && !body.business_name) {
+    if (!googleData && !body.business_name?.trim()) {
       return NextResponse.json(
         {
           error:
@@ -122,42 +119,103 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const insertPayload: Record<string, unknown> = {
+    // Compile full address if city, nearby or street provided
+    const addressParts = [
+      body.street?.trim(),
+      body.nearby?.trim() ? `Near ${body.nearby.trim()}` : null,
+      body.city?.trim(),
+      body.address?.trim() || googleData?.address,
+    ].filter(Boolean);
+
+    const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
+
+    // Default aspects & tags if none provided
+    const aspects = Array.isArray(body.aspects) ? body.aspects.slice(0, 3) : [];
+    const ratingTags = body.rating_tags || {};
+
+    const fullPayload: Record<string, unknown> = {
       public_token: publicToken,
       google_review_url: reviewUrl,
       place_id: googleData?.place_id ?? null,
       business_name: businessName,
-      address: googleData?.address ?? body.address ?? null,
-      category: googleData?.category ?? body.category ?? null,
+      address: fullAddress,
+      city: body.city?.trim() || null,
+      nearby: body.nearby?.trim() || null,
+      street: body.street?.trim() || null,
+      phone: body.phone?.trim() || null,
+      email: body.email?.trim() || null,
+      category: body.category?.trim() || googleData?.category || null,
+      service_keywords: body.service_keywords?.trim() || null,
+      primary_language: body.primary_language?.trim() || 'english',
+      secondary_language: body.secondary_language?.trim() || 'hinglish',
+      aspects,
+      rating_tags: ratingTags,
+      show_aspects: body.show_aspects !== false,
+      show_tags: body.show_tags !== false,
       data_source: googleData ? 'google_places' : 'manual',
+      custom_context: body.custom_context?.trim() || null,
       google_review_destination:
         googleData?.google_review_destination ?? reviewUrl,
       google_data_refreshed_at: googleData ? new Date().toISOString() : null,
     };
 
-    if (body.custom_context?.trim()) {
-      insertPayload.custom_context = body.custom_context.trim();
-    }
-
+    // Attempt insert with all columns
     let insertRes = await supabase
       .from('businesses')
-      .insert(insertPayload)
+      .insert(fullPayload)
       .select()
       .single();
 
-    // Fallback: If custom_context column doesn't exist in Supabase yet, retry without it
-    if (
-      insertRes.error &&
-      insertPayload.custom_context &&
-      (insertRes.error.message?.includes('custom_context') || insertRes.error.code === 'PGRST204')
-    ) {
-      console.warn('[businesses POST] custom_context column missing in Supabase, retrying insert without it');
-      delete insertPayload.custom_context;
+    // Fallback: If new columns don't exist in Supabase yet, encode extra details in custom_context
+    if (insertRes.error && (insertRes.error.code === 'PGRST204' || insertRes.error.message?.includes('column'))) {
+      console.warn('[businesses POST] Schema columns missing, falling back to base columns + structured custom_context');
+
+      const structuredContext = JSON.stringify({
+        _is_structured: true,
+        city: body.city?.trim() || null,
+        nearby: body.nearby?.trim() || null,
+        street: body.street?.trim() || null,
+        phone: body.phone?.trim() || null,
+        email: body.email?.trim() || null,
+        service_keywords: body.service_keywords?.trim() || null,
+        primary_language: body.primary_language?.trim() || 'english',
+        secondary_language: body.secondary_language?.trim() || 'hinglish',
+        aspects,
+        rating_tags: ratingTags,
+        show_aspects: body.show_aspects !== false,
+        show_tags: body.show_tags !== false,
+        custom_context: body.custom_context?.trim() || null,
+      });
+
+      const basePayload: Record<string, unknown> = {
+        public_token: publicToken,
+        google_review_url: reviewUrl,
+        place_id: googleData?.place_id ?? null,
+        business_name: businessName,
+        address: fullAddress,
+        category: body.category?.trim() || googleData?.category || null,
+        data_source: googleData ? 'google_places' : 'manual',
+        custom_context: structuredContext,
+        google_review_destination:
+          googleData?.google_review_destination ?? reviewUrl,
+        google_data_refreshed_at: googleData ? new Date().toISOString() : null,
+      };
+
       insertRes = await supabase
         .from('businesses')
-        .insert(insertPayload)
+        .insert(basePayload)
         .select()
         .single();
+
+      // If custom_context itself doesn't exist, retry without it
+      if (insertRes.error && (insertRes.error.code === 'PGRST204' || insertRes.error.message?.includes('custom_context'))) {
+        delete basePayload.custom_context;
+        insertRes = await supabase
+          .from('businesses')
+          .insert(basePayload)
+          .select()
+          .single();
+      }
     }
 
     if (insertRes.error) {

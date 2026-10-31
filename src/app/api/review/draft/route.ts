@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { generateReviewDrafts, isOpenAIConfigured } from '@/lib/openai';
+import { generateReviewDrafts, isOpenAIConfigured, GenerateDraftOptions } from '@/lib/openai';
 import { recordEvent, recordAiUsage } from '@/lib/analytics';
 import { checkRateLimit, getClientIp, hashIp } from '@/lib/rateLimit';
 
@@ -25,14 +25,20 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Parse and validate request ────────────────────────────────────────────
-  let body: { token?: string; rating?: number; customer_note?: string };
+  let body: {
+    token?: string;
+    rating?: number;
+    customer_note?: string;
+    selected_aspects?: string[];
+    selected_tags?: string[];
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { token, rating, customer_note } = body;
+  const { token, rating, customer_note, selected_aspects, selected_tags } = body;
 
   if (!token || typeof token !== 'string' || token.length > 50) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
@@ -48,15 +54,17 @@ export async function POST(request: NextRequest) {
   // ── Resolve token to business ─────────────────────────────────────────────
   let businessQuery = await supabase
     .from('businesses')
-    .select('id, business_name, address, category, is_active, custom_context')
+    .select(
+      'id, business_name, address, category, is_active, city, nearby, street, service_keywords, primary_language, secondary_language, custom_context'
+    )
     .eq('public_token', token)
     .eq('is_active', true)
     .single();
 
-  if (businessQuery.error && businessQuery.error.message.includes('custom_context')) {
+  if (businessQuery.error) {
     businessQuery = await supabase
       .from('businesses')
-      .select('id, business_name, address, category, is_active')
+      .select('id, business_name, address, category, is_active, custom_context')
       .eq('public_token', token)
       .eq('is_active', true)
       .single();
@@ -107,6 +115,48 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ── Extract extra parameters ──────────────────────────────────────────────
+  const bizRecord = business as Record<string, unknown>;
+
+  let serviceKeywords = bizRecord.service_keywords as string | undefined;
+  let city = bizRecord.city as string | undefined;
+  let nearby = bizRecord.nearby as string | undefined;
+  let street = bizRecord.street as string | undefined;
+  let primaryLang = bizRecord.primary_language as string | undefined;
+  let secondaryLang = bizRecord.secondary_language as string | undefined;
+  let customContext = bizRecord.custom_context as string | undefined;
+
+  // If structured JSON was stored in custom_context
+  if (customContext && customContext.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(customContext);
+      if (parsed._is_structured) {
+        serviceKeywords = serviceKeywords || parsed.service_keywords;
+        city = city || parsed.city;
+        nearby = nearby || parsed.nearby;
+        street = street || parsed.street;
+        primaryLang = primaryLang || parsed.primary_language;
+        secondaryLang = secondaryLang || parsed.secondary_language;
+        customContext = parsed.custom_context;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const draftOptions: GenerateDraftOptions = {
+    customContext,
+    customerNote: customer_note,
+    serviceKeywords,
+    selectedAspects: selected_aspects || [],
+    selectedTags: selected_tags || [],
+    city,
+    nearby,
+    street,
+    primaryLanguage: primaryLang || 'English',
+    secondaryLanguage: secondaryLang || 'Hinglish',
+  };
+
   // ── Generate drafts ───────────────────────────────────────────────────────
   try {
     const result = await generateReviewDrafts(
@@ -114,8 +164,7 @@ export async function POST(request: NextRequest) {
       business.category,
       business.address,
       rating,
-      (business as { custom_context?: string | null }).custom_context,
-      customer_note
+      draftOptions
     );
 
     // Record analytics (fire-and-forget)
@@ -138,7 +187,7 @@ export async function POST(request: NextRequest) {
       business_name: business.business_name,
       rating,
       disclaimer:
-        'These are AI-generated suggestions. Please review and personalise before posting.',
+        'These are AI-generated suggestions. Review and personalize before continuing to Google.',
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'AI generation failed';

@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import type { Business } from '@/types';
+import BusinessDetailsForm, { BusinessFormState, DEFAULT_RATING_TAGS } from '@/components/BusinessDetailsForm';
 
 interface BusinessDetailPageProps {
   params: Promise<{ id: string }>;
@@ -16,8 +17,8 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
   const [refreshing, setRefreshing] = useState(false);
   const [qrDataUri, setQrDataUri] = useState('');
   const [editMode, setEditMode] = useState(false);
-  const [editData, setEditData] = useState({ business_name: '', address: '', category: '', custom_context: '' });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -44,13 +45,6 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
         if (!res.ok) throw new Error('Business not found');
         const data: Business = await res.json();
         setBusiness(data);
-        setEditData({
-          business_name: data.business_name,
-          address: data.address ?? '',
-          category: data.category ?? '',
-          custom_context: data.custom_context ?? '',
-        });
-        // Load QR preview
         await loadQrPreview(data.public_token);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load');
@@ -78,295 +72,343 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
     }
   }
 
-  async function handleSave() {
+  async function handleSave(formData: BusinessFormState) {
     if (!business) return;
     setSaving(true);
+    setSaveError('');
     try {
       const res = await fetch(`/api/businesses/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editData),
+        body: JSON.stringify({
+          business_name: formData.business_name.trim(),
+          category: formData.category.trim() || null,
+          google_review_url: formData.google_review_url.trim(),
+          street: formData.street.trim() || null,
+          nearby: formData.nearby.trim() || null,
+          city: formData.city.trim() || null,
+          phone: formData.phone.trim() || null,
+          email: formData.email.trim() || null,
+          service_keywords: formData.service_keywords.trim() || null,
+          primary_language: formData.primary_language.trim() || 'English',
+          secondary_language: formData.secondary_language.trim() || 'Hinglish',
+          aspects: formData.aspects,
+          rating_tags: formData.rating_tags,
+          show_aspects: formData.show_aspects,
+          show_tags: formData.show_tags,
+          custom_context: formData.custom_context.trim() || null,
+        }),
       });
-      if (!res.ok) throw new Error('Save failed');
+
       const updated = await res.json();
+      if (!res.ok) {
+        throw new Error(updated.error || 'Save failed');
+      }
+
       setBusiness(updated);
       setEditMode(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Save failed');
+      setSaveError(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleToggleActive() {
-    if (!business) return;
-    const res = await fetch(`/api/businesses/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: !business.is_active }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setBusiness(updated);
-    }
-  }
-
-  const reviewPageUrl = business ? `${baseUrl}/r/${business.public_token}` : '';
-
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--admin-text-muted)' }}>
+      <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
         <div className="spinner spinner-dark" style={{ margin: '0 auto 1rem' }} />
-        Loading…
+        Loading business details…
       </div>
     );
   }
 
   if (error || !business) {
     return (
-      <div>
-        <Link href="/businesses" className="btn btn-ghost" style={{ marginBottom: '1rem' }}>
-          ← Back
+      <div className="alert alert-error">
+        {error || 'Business not found'}
+        <Link href="/businesses" style={{ marginLeft: '1rem', textDecoration: 'underline' }}>
+          Back to list
         </Link>
-        <div className="alert alert-error">{error || 'Business not found'}</div>
       </div>
     );
   }
 
+  const reviewPageUrl = `${baseUrl}/r/${business.public_token}`;
+
   return (
     <>
+      <div style={{ marginBottom: 'var(--space-md)' }}>
+        <Link
+          href="/businesses"
+          style={{ color: 'var(--admin-text-muted)', fontSize: '0.875rem' }}
+        >
+          ← Back to Businesses
+        </Link>
+      </div>
+
       <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Link href="/businesses" className="btn btn-ghost btn-sm">← Back</Link>
-          <div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
             <h1 className="page-title">{business.business_name}</h1>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', alignItems: 'center' }}>
-              <span className={`badge ${business.is_active ? 'badge-success' : 'badge-danger'}`}>
-                {business.is_active ? '● Active' : '○ Inactive'}
-              </span>
-              <span className={`badge ${business.data_source === 'google_places' ? 'badge-info' : 'badge-warning'}`}>
-                {business.data_source === 'google_places' ? '🔍 Google' : '✏️ Manual'}
-              </span>
-            </div>
+            <span
+              className={`badge ${business.is_active ? 'badge-success' : 'badge-danger'}`}
+            >
+              {business.is_active ? 'Active' : 'Inactive'}
+            </span>
+            <span
+              className={`badge ${business.data_source === 'google_places' ? 'badge-info' : 'badge-warning'}`}
+            >
+              {business.data_source === 'google_places' ? '🔍 Google Places' : '✏️ Manual'}
+            </span>
           </div>
+          <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
+            Added {new Date(business.created_at).toLocaleDateString()}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleToggleActive}
-            id="toggle-active-btn"
-          >
-            {business.is_active ? 'Deactivate' : 'Activate'}
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            id="refresh-data-btn"
-          >
-            {refreshing ? <><span className="spinner" /> Refreshing…</> : '🔄 Refresh Data'}
-          </button>
+
+        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+          {business.data_source === 'google_places' && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              id="refresh-google-data-btn"
+              title="Refresh name, address, category from Google Places"
+            >
+              {refreshing ? (
+                <>
+                  <span className="spinner" /> Refreshing…
+                </>
+              ) : (
+                '🔄 Refresh Google Data'
+              )}
+            </button>
+          )}
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setEditMode(!editMode)}
             id="edit-business-btn"
           >
-            {editMode ? 'Cancel Edit' : '✏️ Edit'}
+            {editMode ? 'Cancel Edit' : '✏️ Edit All Details'}
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-lg)' }}>
+      {editMode ? (
+        <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 'var(--space-md)' }}>
+            Edit Business Details, SEO &amp; Review Funnel
+          </h2>
+          <BusinessDetailsForm
+            initialValues={{
+              google_review_url: business.google_review_url,
+              business_name: business.business_name,
+              category: business.category || '',
+              street: business.street || '',
+              nearby: business.nearby || '',
+              city: business.city || '',
+              phone: business.phone || '',
+              email: business.email || '',
+              service_keywords: business.service_keywords || '',
+              primary_language: business.primary_language || 'English',
+              secondary_language: business.secondary_language || 'Hinglish',
+              aspects: business.aspects || ['Food quality', 'Staff behavior', 'Cleanliness'],
+              rating_tags: business.rating_tags || DEFAULT_RATING_TAGS,
+              show_aspects: business.show_aspects !== false,
+              show_tags: business.show_tags !== false,
+              custom_context: business.custom_context || '',
+            }}
+            onSubmit={handleSave}
+            loading={saving}
+            error={saveError}
+            submitButtonText="Save All Changes"
+            isEdit={true}
+          />
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-lg)' }}>
+          {/* Business Info */}
+          <div className="card">
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-md)' }}>
+              Business &amp; Contact Details
+            </h2>
 
-        {/* Business Info */}
-        <div className="card">
-          <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-lg)' }}>Business Information</h2>
-
-          {editMode ? (
-            <div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-name">Business Name</label>
-                <input
-                  id="edit-name"
-                  className="form-input"
-                  value={editData.business_name}
-                  onChange={(e) => setEditData((d) => ({ ...d, business_name: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-address">Address</label>
-                <input
-                  id="edit-address"
-                  className="form-input"
-                  value={editData.address}
-                  onChange={(e) => setEditData((d) => ({ ...d, address: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-category">Category</label>
-                <input
-                  id="edit-category"
-                  className="form-input"
-                  value={editData.category}
-                  onChange={(e) => setEditData((d) => ({ ...d, category: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-highlights">
-                  ✨ Business Details &amp; Highlights (for AI Reviews)
-                </label>
-                <textarea
-                  id="edit-highlights"
-                  className="form-input"
-                  rows={3}
-                  placeholder="e.g. Famous for Paneer Tikka, Quick Delivery, Rooftop ambience, 15+ years trusted"
-                  value={editData.custom_context}
-                  onChange={(e) => setEditData((d) => ({ ...d, custom_context: e.target.value }))}
-                />
-                <span className="form-hint">
-                  AI will use these details to write highly personalized, authentic reviews without hallucinating.
-                </span>
-              </div>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={handleSave}
-                disabled={saving}
-                id="save-business-btn"
-              >
-                {saving ? <><span className="spinner" /> Saving…</> : '💾 Save Changes'}
-              </button>
-            </div>
-          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <InfoRow label="Name" value={business.business_name} />
-              <InfoRow label="Address" value={business.address || '—'} />
               <InfoRow label="Category" value={business.category || '—'} />
-              <InfoRow label="AI Highlights" value={business.custom_context || 'None set (click Edit to add)'} />
-              <InfoRow label="Place ID" value={business.place_id || '—'} mono />
+              <InfoRow label="City" value={business.city || '—'} />
+              <InfoRow label="Nearby / Landmark" value={business.nearby || '—'} />
+              <InfoRow label="Street" value={business.street || '—'} />
+              <InfoRow label="Full Address" value={business.address || '—'} />
+              <InfoRow label="Phone No." value={business.phone || '—'} />
+              <InfoRow label="Email ID" value={business.email || '—'} />
               <InfoRow label="Token" value={business.public_token} mono />
               <InfoRow label="Data Source" value={business.data_source} />
-              {business.google_data_refreshed_at && (
-                <InfoRow
-                  label="Last Refreshed"
-                  value={new Date(business.google_data_refreshed_at).toLocaleString()}
-                />
+            </div>
+          </div>
+
+          {/* SEO & Languages */}
+          <div className="card">
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-md)' }}>
+              SEO Keywords &amp; Funnel Settings
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <InfoRow
+                label="Service SEO Keywords"
+                value={business.service_keywords || 'None set (click Edit to add)'}
+              />
+              <InfoRow
+                label="Output Languages"
+                value={`Draft 1: ${business.primary_language || 'English'} | Draft 2: ${business.secondary_language || 'Hinglish'}`}
+              />
+              <InfoRow
+                label="Show Aspects in Funnel"
+                value={business.show_aspects !== false ? '✅ Enabled' : '❌ Disabled'}
+              />
+              <InfoRow
+                label="Show Tags in Funnel"
+                value={business.show_tags !== false ? '✅ Enabled' : '❌ Disabled'}
+              />
+
+              {/* Aspects Chips Preview */}
+              <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)', marginBottom: '4px' }}>
+                  Aspects ({business.aspects?.length || 0}/3):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {(business.aspects || []).map((a, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: 'rgba(99, 102, 241, 0.15)',
+                        color: 'var(--admin-text)',
+                      }}
+                    >
+                      {a}
+                    </span>
+                  ))}
+                  {(!business.aspects || business.aspects.length === 0) && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>None set</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 5-Star Tags Preview */}
+              <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)', marginBottom: '4px' }}>
+                  5★ Tags ({business.rating_tags?.['5']?.length || 0}/3):
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {(business.rating_tags?.['5'] || []).map((t, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: 'var(--admin-text)',
+                      }}
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {business.custom_context && (
+                <InfoRow label="Extra Notes" value={business.custom_context} />
               )}
             </div>
-          )}
-        </div>
-
-        {/* QR Code */}
-        <div className="card">
-          <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-lg)' }}>QR Code & Downloads</h2>
-
-          <div className="qr-preview-container">
-            {qrDataUri ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={qrDataUri}
-                alt={`QR code for ${business.business_name}`}
-                className="qr-preview-image"
-                width={180}
-                height={180}
-              />
-            ) : (
-              <div
-                className="qr-preview-image skeleton"
-                style={{ width: 180, height: 180 }}
-              />
-            )}
-
-            <div style={{ textAlign: 'center', width: '100%' }}>
-              <p style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginBottom: '0.75rem', wordBreak: 'break-all' }}>
-                {reviewPageUrl}
-              </p>
-
-              <div className="qr-download-buttons">
-                <a
-                  href={`/api/businesses/${id}/qr?size=1024`}
-                  download
-                  className="btn btn-secondary btn-sm"
-                  id="download-qr-png-btn"
-                >
-                  ⬇ PNG
-                </a>
-                <a
-                  href={`/api/businesses/${id}/qr?size=2048`}
-                  download
-                  className="btn btn-secondary btn-sm"
-                >
-                  ⬇ PNG 2K
-                </a>
-                <a
-                  href={`/api/qr/pdf?businessId=${id}`}
-                  download
-                  className="btn btn-primary btn-sm"
-                  id="download-qr-pdf-btn"
-                >
-                  ⬇ A4 PDF
-                </a>
-              </div>
-            </div>
-
-            <a
-              href={`/r/${business.public_token}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-ghost btn-sm"
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              ↗ Open Public Review Page
-            </a>
           </div>
-        </div>
 
-        {/* Review Destination */}
-        <div className="card">
-          <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-lg)' }}>Google Review Destination</h2>
+          {/* QR Code & Review Destination */}
+          <div className="card">
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 'var(--space-md)' }}>
+              QR Code &amp; Review Links
+            </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginBottom: '0.25rem' }}>
-                Google Review URL
+            <div className="qr-preview-container">
+              {qrDataUri ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={qrDataUri}
+                  alt={`QR code for ${business.business_name}`}
+                  className="qr-preview-image"
+                  width={160}
+                  height={160}
+                />
+              ) : (
+                <div className="qr-preview-image skeleton" style={{ width: 160, height: 160 }} />
+              )}
+
+              <div style={{ textAlign: 'center', width: '100%' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginBottom: '0.5rem', wordBreak: 'break-all' }}>
+                  {reviewPageUrl}
+                </p>
+
+                <div className="qr-download-buttons">
+                  <a
+                    href={`/api/businesses/${id}/qr?size=1024`}
+                    download
+                    className="btn btn-secondary btn-sm"
+                  >
+                    ⬇ PNG
+                  </a>
+                  <a
+                    href={`/api/qr/pdf?businessId=${id}`}
+                    download
+                    className="btn btn-primary btn-sm"
+                  >
+                    ⬇ A4 PDF Standee
+                  </a>
+                </div>
               </div>
-              <div style={{ wordBreak: 'break-all', fontSize: '0.8rem', color: 'var(--admin-text)' }}>
-                {business.google_review_destination || business.google_review_url}
-              </div>
-            </div>
 
-            {business.google_review_destination && (
               <a
-                href={business.google_review_destination}
+                href={`/r/${business.public_token}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-secondary btn-sm"
-                id="open-google-review-btn"
+                className="btn btn-ghost btn-sm"
+                style={{ width: '100%', justifyContent: 'center' }}
               >
-                ↗ Open Google Review Page
+                ↗ Test Public Customer Review Page
               </a>
-            )}
-
-            <div className="alert alert-info" style={{ fontSize: '0.8rem' }}>
-              ℹ️ The QR code points to your permanent domain. You can update the Google destination without reprinting.
             </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function InfoRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--admin-border)', fontSize: '0.875rem', gap: '1rem' }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '0.4rem 0',
+        borderBottom: '1px solid var(--admin-border)',
+        fontSize: '0.875rem',
+        gap: '1rem',
+      }}
+    >
       <span style={{ color: 'var(--admin-text-muted)', flexShrink: 0 }}>{label}</span>
-      <span style={{
-        color: 'var(--admin-text)',
-        fontFamily: mono ? 'monospace' : 'inherit',
-        fontSize: mono ? '0.8rem' : 'inherit',
-        textAlign: 'right',
-        wordBreak: 'break-all',
-      }}>
+      <span
+        style={{
+          color: 'var(--admin-text)',
+          fontFamily: mono ? 'monospace' : 'inherit',
+          fontSize: mono ? '0.8rem' : 'inherit',
+          textAlign: 'right',
+          wordBreak: 'break-all',
+        }}
+      >
         {value}
       </span>
     </div>

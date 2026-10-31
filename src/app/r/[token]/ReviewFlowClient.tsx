@@ -8,6 +8,10 @@ interface BusinessContext {
   category: string | null;
   google_review_destination: string;
   public_token: string;
+  aspects?: string[];
+  rating_tags?: Record<string, string[]>;
+  show_aspects?: boolean;
+  show_tags?: boolean;
   _bid: string;
 }
 
@@ -29,6 +33,10 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   const [selectedRating, setSelectedRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [customerNote, setCustomerNote] = useState('');
+
+  // Selected Aspects and Tags
+  const [selectedAspects, setSelectedAspects] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const [drafts, setDrafts] = useState<[string, string] | null>(null);
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<0 | 1>(0);
@@ -60,8 +68,20 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     load();
   }, [token]);
 
-  async function handleRatingSelect(rating: number) {
-    setSelectedRating(rating);
+  function toggleAspect(aspect: string) {
+    setSelectedAspects((prev) =>
+      prev.includes(aspect) ? prev.filter((a) => a !== aspect) : [...prev, aspect]
+    );
+  }
+
+  function toggleTag(tag: string) {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }
+
+  async function handleGenerate(ratingToUse = selectedRating) {
+    if (!ratingToUse) return;
     setDrafts(null);
     setEditedDraft('');
     setGenerateError('');
@@ -73,8 +93,10 @@ export default function ReviewFlowClient({ token }: { token: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token,
-          rating,
+          rating: ratingToUse,
           customer_note: customerNote.trim() || undefined,
+          selected_aspects: selectedAspects,
+          selected_tags: selectedTags,
         }),
       });
 
@@ -102,6 +124,12 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     }
   }
 
+  function handleRatingClick(star: number) {
+    setSelectedRating(star);
+    // Reset tags when rating changes to match the new star level
+    setSelectedTags([]);
+  }
+
   function handleSelectDraft(index: 0 | 1) {
     setSelectedDraftIndex(index);
     setEditedDraft(drafts![index]);
@@ -121,7 +149,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
         body: JSON.stringify({ token, event_type: 'copy_click', rating: selectedRating }),
       }).catch(() => {});
     } catch {
-      // Clipboard API unavailable (some browsers/contexts)
+      // Fallback
     }
   }
 
@@ -139,6 +167,11 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     window.open(context.google_review_destination, '_blank', 'noopener,noreferrer');
     setStep('continue');
   }
+
+  const activeStarTags =
+    selectedRating > 0 && context?.rating_tags
+      ? context.rating_tags[String(selectedRating)] || []
+      : [];
 
   if (step === 'loading') {
     return (
@@ -235,7 +268,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
         {/* Body */}
         <div className="review-card-body">
 
-          {/* Step: Select Rating */}
+          {/* Step: Select Rating & Configure Aspects / Tags */}
           {(step === 'select-rating' || step === 'generating') && (
             <div className="star-rating-container">
               <p className="star-rating-label">
@@ -244,6 +277,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   : 'How was your experience?'}
               </p>
 
+              {/* 5-Star Row */}
               <div className="stars-row" role="radiogroup" aria-label="Star rating">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -251,7 +285,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                     className={`star-btn ${
                       star <= (hoverRating || selectedRating) ? 'filled' : ''
                     } ${star <= hoverRating ? 'preview' : ''}`}
-                    onClick={() => step === 'select-rating' && handleRatingSelect(star)}
+                    onClick={() => step === 'select-rating' && handleRatingClick(star)}
                     onMouseEnter={() => step === 'select-rating' && setHoverRating(star)}
                     onMouseLeave={() => step === 'select-rating' && setHoverRating(0)}
                     disabled={step === 'generating'}
@@ -269,30 +303,109 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                 {step === 'generating' ? (
                   <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                     <span className="spinner spinner-dark" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                    Creating suggestions for you…
+                    Drafting English &amp; Hinglish reviews for you…
                   </span>
                 ) : (
                   STAR_LABELS[hoverRating || selectedRating] ?? 'Tap a star to rate'
                 )}
               </div>
 
-              {step === 'select-rating' && (
-                <div style={{ marginTop: '1.25rem', textAlign: 'left', width: '100%', maxWidth: '340px', margin: '1.25rem auto 0' }}>
-                  <label htmlFor="customer-note-input" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--public-text)', display: 'block', marginBottom: '0.35rem' }}>
-                    ✍️ Add specific details or dishes? (Optional)
-                  </label>
-                  <input
-                    id="customer-note-input"
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Loved the Butter Chicken, fast delivery"
-                    value={customerNote}
-                    onChange={(e) => setCustomerNote(e.target.value)}
-                    style={{ background: '#ffffff', borderColor: '#cbd5e1', color: '#1e293b', fontSize: '0.85rem' }}
-                  />
-                  <span style={{ fontSize: '0.72rem', color: 'var(--public-text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                    Tap a star above and AI will personalize your review with this!
-                  </span>
+              {selectedRating > 0 && step === 'select-rating' && (
+                <div style={{ marginTop: '1.25rem', textAlign: 'left', width: '100%', maxWidth: '380px', margin: '1.25rem auto 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                  {/* Aspects Selection (if enabled) */}
+                  {context?.show_aspects !== false && context?.aspects && context.aspects.length > 0 && (
+                    <div>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--public-text)', display: 'block', marginBottom: '0.4rem' }}>
+                        ⭐ Select what stood out:
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {context.aspects.map((aspect, idx) => {
+                          const isSelected = selectedAspects.includes(aspect);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => toggleAspect(aspect)}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: '16px',
+                                border: isSelected ? '1px solid #4f46e5' : '1px solid #cbd5e1',
+                                background: isSelected ? '#4f46e5' : '#ffffff',
+                                color: isSelected ? '#ffffff' : '#334155',
+                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {isSelected ? `✓ ${aspect}` : `+ ${aspect}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rating Tags Selection (if enabled) */}
+                  {context?.show_tags !== false && activeStarTags.length > 0 && (
+                    <div>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--public-text)', display: 'block', marginBottom: '0.4rem' }}>
+                        🏷️ Quick highlights:
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {activeStarTags.map((tag, idx) => {
+                          const isSelected = selectedTags.includes(tag);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => toggleTag(tag)}
+                              style={{
+                                padding: '5px 12px',
+                                borderRadius: '16px',
+                                border: isSelected ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                                background: isSelected ? '#f59e0b' : '#ffffff',
+                                color: isSelected ? '#ffffff' : '#334155',
+                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {isSelected ? `✓ ${tag}` : `+ ${tag}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Customer Personal Note */}
+                  <div>
+                    <label htmlFor="customer-note-input" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--public-text)', display: 'block', marginBottom: '0.35rem' }}>
+                      ✍️ Anything specific to mention? (Optional)
+                    </label>
+                    <input
+                      id="customer-note-input"
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Loved Dr. Sharma's gentle approach, quick service"
+                      value={customerNote}
+                      onChange={(e) => setCustomerNote(e.target.value)}
+                      style={{ background: '#ffffff', borderColor: '#cbd5e1', color: '#1e293b', fontSize: '0.85rem' }}
+                    />
+                  </div>
+
+                  {/* Generate Button */}
+                  <button
+                    type="button"
+                    className="btn-public-google"
+                    onClick={() => handleGenerate()}
+                    style={{ marginTop: '0.5rem', background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
+                  >
+                    ✨ Generate AI Reviews (English &amp; Hinglish)
+                  </button>
                 </div>
               )}
 
@@ -309,17 +422,17 @@ export default function ReviewFlowClient({ token }: { token: string }) {
             <>
               <div style={{ marginBottom: 'var(--space-md)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '1.5rem' }}>
+                  <span style={{ fontSize: '1.5rem', color: '#f59e0b' }}>
                     {'★'.repeat(selectedRating)}{'☆'.repeat(5 - selectedRating)}
                   </span>
                   <span style={{ color: 'var(--public-text-muted)', fontSize: '0.875rem' }}>
                     {STAR_LABELS[selectedRating]}
                   </span>
                   <button
-                    style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--brand-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    onClick={() => { setStep('select-rating'); setSelectedRating(0); }}
+                    style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--brand-primary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => { setStep('select-rating'); }}
                   >
-                    Change
+                    Change Rating / Details
                   </button>
                 </div>
               </div>
@@ -343,40 +456,68 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                 </div>
               ) : (
                 <div className="drafts-section">
-                  <div className="drafts-label">
-                    🤖 AI Suggestions
-                    <span style={{ fontSize: '0.7rem', color: 'var(--public-text-muted)', fontWeight: 400, textTransform: 'none' }}>
-                      — edit before posting
+                  <div className="drafts-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>🤖 AI Suggestions (Pick your language)</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--public-text-muted)' }}>
+                      Tap to select &amp; edit
                     </span>
                   </div>
 
-                  {drafts.map((draft, i) => (
-                    <div
-                      key={i}
-                      className={`draft-card ${selectedDraftIndex === i ? 'selected' : ''}`}
-                      onClick={() => handleSelectDraft(i as 0 | 1)}
-                      id={`draft-option-${i}`}
-                    >
-                      <div className="draft-card-label">Option {i + 1}</div>
-                      {selectedDraftIndex === i ? (
-                        <textarea
-                          className="draft-edit-area"
-                          value={editedDraft}
-                          onChange={(e) => setEditedDraft(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          rows={Math.max(3, Math.ceil(editedDraft.length / 60))}
-                          aria-label={`Edit draft option ${i + 1}`}
-                          id={`draft-edit-${i}`}
-                        />
-                      ) : (
-                        <p className="draft-text">{draft}</p>
-                      )}
-                    </div>
-                  ))}
+                  {drafts.map((draft, i) => {
+                    const isEnglish = i === 0;
+                    return (
+                      <div
+                        key={i}
+                        className={`draft-card ${selectedDraftIndex === i ? 'selected' : ''}`}
+                        onClick={() => handleSelectDraft(i as 0 | 1)}
+                        id={`draft-option-${i}`}
+                        style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              color: selectedDraftIndex === i ? '#4f46e5' : '#64748b',
+                            }}
+                          >
+                            Draft {i + 1} ({isEnglish ? 'English' : 'Hinglish'})
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.7rem',
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              background: isEnglish ? 'rgba(79, 70, 229, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                              color: isEnglish ? '#4f46e5' : '#b45309',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {isEnglish ? '🇬🇧 English' : '🇮🇳 Hinglish'}
+                          </span>
+                        </div>
+
+                        {selectedDraftIndex === i ? (
+                          <textarea
+                            className="draft-edit-area"
+                            value={editedDraft}
+                            onChange={(e) => setEditedDraft(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            rows={Math.max(3, Math.ceil(editedDraft.length / 50))}
+                            aria-label={`Edit draft option ${i + 1}`}
+                            id={`draft-edit-${i}`}
+                          />
+                        ) : (
+                          <p className="draft-text">{draft}</p>
+                        )}
+                      </div>
+                    );
+                  })}
 
                   <div className="ai-disclaimer" aria-label="AI disclosure">
                     <span aria-hidden="true">ℹ️</span>
-                    These are AI-generated suggestions. Please personalise before posting.
+                    These are AI-generated suggestions. Feel free to edit anything before posting!
                   </div>
                 </div>
               )}
@@ -389,7 +530,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   disabled={!editedDraft.trim()}
                   id="copy-draft-btn"
                 >
-                  {copied ? '✓ Copied!' : '📋 Copy'}
+                  {copied ? '✓ Copied to Clipboard!' : '📋 1-Click Copy Review'}
                 </button>
               </div>
 
@@ -403,11 +544,11 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
                 </svg>
-                Continue to Google →
+                Continue to Google Review →
               </button>
 
               <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--public-text-muted)', marginTop: '0.75rem' }}>
-                Copy your review text first, then paste it on Google.
+                Click &quot;Copy&quot; above, then paste into Google Maps and hit Post!
               </p>
             </>
           )}

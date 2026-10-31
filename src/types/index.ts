@@ -9,7 +9,19 @@ export interface Business {
   place_id: string | null;
   business_name: string;
   address: string | null;
+  city?: string | null;
+  nearby?: string | null;
+  street?: string | null;
+  phone?: string | null;
+  email?: string | null;
   category: string | null;
+  service_keywords?: string | null;
+  primary_language?: string | null;
+  secondary_language?: string | null;
+  aspects?: string[] | null;
+  rating_tags?: Record<string, string[]> | null;
+  show_aspects?: boolean;
+  show_tags?: boolean;
   data_source: DataSource;
   google_review_destination: string | null;
   is_active: boolean;
@@ -60,16 +72,40 @@ export interface AdminSession {
 
 export interface CreateBusinessInput {
   google_review_url: string;
-  business_name?: string;   // required if data_source ends up 'manual'
+  business_name?: string;
   address?: string;
+  city?: string;
+  nearby?: string;
+  street?: string;
+  phone?: string;
+  email?: string;
   category?: string;
+  service_keywords?: string;
+  primary_language?: string;
+  secondary_language?: string;
+  aspects?: string[];
+  rating_tags?: Record<string, string[]>;
+  show_aspects?: boolean;
+  show_tags?: boolean;
   custom_context?: string;
 }
 
 export interface UpdateBusinessInput {
   business_name?: string;
   address?: string;
+  city?: string;
+  nearby?: string;
+  street?: string;
+  phone?: string;
+  email?: string;
   category?: string;
+  service_keywords?: string;
+  primary_language?: string;
+  secondary_language?: string;
+  aspects?: string[];
+  rating_tags?: Record<string, string[]>;
+  show_aspects?: boolean;
+  show_tags?: boolean;
   is_active?: boolean;
   google_review_url?: string;
   custom_context?: string;
@@ -77,26 +113,35 @@ export interface UpdateBusinessInput {
 
 export interface DraftGenerationInput {
   token: string;
-  rating: number;       // 1–5
+  rating: number; // 1–5
   customer_note?: string; // Optional user experience note
+  selected_aspects?: string[]; // Aspects selected by customer (e.g. Food quality)
+  selected_tags?: string[]; // Rating tags selected by customer (e.g. friendly staff)
 }
 
 export interface DraftGenerationOutput {
-  drafts: [string, string];   // exactly two options
+  drafts: [string, string]; // [English draft, Hinglish draft]
   business_name: string;
   rating: number;
 }
 
 export interface ReviewContextOutput {
   business_name: string;
+  address: string | null;
+  category: string | null;
   google_review_destination: string;
   public_token: string;
+  aspects?: string[];
+  rating_tags?: Record<string, string[]>;
+  show_aspects?: boolean;
+  show_tags?: boolean;
+  _bid?: string;
 }
 
 // ── Analytics types ─────────────────────────────────────────
 
 export interface MonthlyTrend {
-  month: string;           // 'YYYY-MM'
+  month: string; // 'YYYY-MM'
   scans: number;
   drafts: number;
   copies: number;
@@ -129,4 +174,5 @@ export interface PaginatedResponse<T> {
 export interface ApiError {
   error: string;
   code?: string;
+  details?: string | null;
 }

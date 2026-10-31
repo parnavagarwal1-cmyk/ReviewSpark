@@ -1,10 +1,10 @@
 /**
- * OpenAI integration for ReviewSpark.
+ * OpenAI / Google Gemini integration for ReviewSpark.
  *
  * Security & compliance:
- * - API key is server-side only (OPENAI_API_KEY, no NEXT_PUBLIC_ prefix)
- * - No customer data is stored; only token usage is recorded in ai_usage table
- * - Prompts explicitly instruct the model not to invent specific facts
+ * - API key is server-side only (GEMINI_API_KEY or OPENAI_API_KEY, no NEXT_PUBLIC_ prefix)
+ * - No customer PII is stored; only token usage is recorded in ai_usage table
+ * - Prompts explicitly instruct the model not to invent specific unmentioned facts
  * - Drafts are clearly labeled as AI suggestions in the UI
  * - Rate limiting is applied at the route level before calling this module
  */
@@ -52,6 +52,7 @@ export const OPENAI_MODEL = process.env.GEMINI_API_KEY
 
 // Cost per 1M tokens (approximate, update as pricing changes)
 const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
+  'gemini-3.5-flash-lite': 0.075,
   'gemini-2.5-flash': 0.075,
   'gemini-1.5-flash': 0.075,
   'gemini-1.5-pro': 1.25,
@@ -61,6 +62,7 @@ const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
   'gpt-3.5-turbo': 0.50,
 };
 const COST_PER_1M_OUTPUT_TOKENS: Record<string, number> = {
+  'gemini-3.5-flash-lite': 0.30,
   'gemini-2.5-flash': 0.30,
   'gemini-1.5-flash': 0.30,
   'gemini-1.5-pro': 5.00,
@@ -89,73 +91,117 @@ export interface DraftResult {
 }
 
 const STAR_SENTIMENTS: Record<number, string> = {
-  1: 'very dissatisfied (1 out of 5 stars)',
-  2: 'somewhat dissatisfied (2 out of 5 stars)',
-  3: 'neutral or mixed experience (3 out of 5 stars)',
-  4: 'satisfied and happy (4 out of 5 stars)',
-  5: 'extremely happy and delighted (5 out of 5 stars)',
+  1: 'very dissatisfied (1 out of 5 stars - polite critical feedback)',
+  2: 'somewhat dissatisfied (2 out of 5 stars - needs improvement)',
+  3: 'neutral or mixed experience (3 out of 5 stars - average experience)',
+  4: 'satisfied and happy (4 out of 5 stars - positive recommendation)',
+  5: 'extremely happy and delighted (5 out of 5 stars - highly recommended)',
 };
 
+export interface GenerateDraftOptions {
+  customContext?: string | null;
+  customerNote?: string | null;
+  serviceKeywords?: string | null;
+  selectedAspects?: string[] | null;
+  selectedTags?: string[] | null;
+  city?: string | null;
+  nearby?: string | null;
+  street?: string | null;
+  primaryLanguage?: string | null;
+  secondaryLanguage?: string | null;
+}
+
 /**
- * Generates two concise Hinglish review draft options for a business.
- *
- * IMPORTANT CONSTRAINTS (enforced in system prompt):
- * - Must not invent specific facts (staff names, food ordered, products used, etc.)
- * - Must be consistent with the selected rating
- * - Must use natural Hinglish (Hindi + English mix as spoken in India)
- * - Maximum ~60 words each
- * - No customer PII is sent to OpenAI
+ * Generates two review draft options:
+ * - Draft 1: Primary language (default English)
+ * - Draft 2: Secondary language (default Hinglish)
  */
 export async function generateReviewDrafts(
   businessName: string,
   businessCategory: string | null,
   businessAddress: string | null,
   rating: number,
-  customContext?: string | null,
-  customerNote?: string | null
+  optionsOrCustomContext?: GenerateDraftOptions | string | null,
+  legacyCustomerNote?: string | null
 ): Promise<DraftResult> {
   if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
     throw new Error('Rating must be an integer between 1 and 5');
   }
 
+  // Support both legacy signature and options object
+  let options: GenerateDraftOptions = {};
+  if (typeof optionsOrCustomContext === 'string' || optionsOrCustomContext === null) {
+    options = {
+      customContext: optionsOrCustomContext,
+      customerNote: legacyCustomerNote,
+    };
+  } else if (optionsOrCustomContext && typeof optionsOrCustomContext === 'object') {
+    options = optionsOrCustomContext;
+  }
+
   const { client, model } = getClient();
   const sentiment = STAR_SENTIMENTS[rating] ?? 'neutral';
 
-  const categoryContext = businessCategory
-    ? `Category: ${businessCategory}`
-    : '';
-  const addressContext = businessAddress
-    ? `Location: ${businessAddress}`
-    : '';
-  const highlightsContext = customContext?.trim()
-    ? `Business Highlights & Specialties: ${customContext.trim()}`
-    : '';
-  const customerNoteContext = customerNote?.trim()
-    ? `Customer Experience Note: "${customerNote.trim()}"`
+  const categoryContext = businessCategory ? `Category: ${businessCategory}` : '';
+
+  // Location details
+  const locParts = [
+    options.street,
+    options.nearby ? `near ${options.nearby}` : null,
+    options.city,
+    businessAddress,
+  ].filter(Boolean);
+  const locationContext = locParts.length > 0 ? `Location: ${locParts.join(', ')}` : '';
+
+  const keywordsContext = options.serviceKeywords?.trim()
+    ? `Service SEO Keywords (naturally mention if relevant): ${options.serviceKeywords.trim()}`
     : '';
 
-  const systemPrompt = `You are a helpful assistant that writes short, genuine Google Review drafts in Hinglish (a natural blend of Hindi and English commonly used in India).
+  const highlightsContext = options.customContext?.trim()
+    ? `Business Highlights: ${options.customContext.trim()}`
+    : '';
 
-STRICT RULES — follow these exactly:
-1. Write EXACTLY 2 draft options, labeled "Draft 1:" and "Draft 2:"
-2. Each draft must be 30–65 words maximum
-3. The tone must match the rating: ${sentiment}
-4. Write in natural Hinglish (Roman script, mix of conversational Hindi and English)
-5. If "Business Highlights" or "Customer Experience Note" are provided, seamlessly weave them into the reviews so they feel authentic and personalized.
-6. DO NOT invent unmentioned specific facts (do not invent staff names, dishes, or products that were not mentioned).
-7. Keep wording authentic, natural, and consistent with the star rating
-8. No emojis, hashtags, or marketing buzzwords
-9. These are SUGGESTIONS — the customer will review and edit before posting
-10. Do not start both drafts with the same word or phrase`;
+  const aspectsContext =
+    options.selectedAspects && options.selectedAspects.length > 0
+      ? `Aspects highlighted by customer: ${options.selectedAspects.join(', ')}`
+      : '';
+
+  const tagsContext =
+    options.selectedTags && options.selectedTags.length > 0
+      ? `Customer experience tags: ${options.selectedTags.join(', ')}`
+      : '';
+
+  const customerNoteContext = options.customerNote?.trim()
+    ? `Customer Personal Note: "${options.customerNote.trim()}"`
+    : '';
+
+  const lang1 = options.primaryLanguage?.trim() || 'English';
+  const lang2 = options.secondaryLanguage?.trim() || 'Hinglish (conversational Hindi + English blend in Roman script)';
+
+  const systemPrompt = `You are a helpful assistant that writes authentic, human-sounding Google Review drafts for customers.
+
+STRICT INSTRUCTIONS:
+1. Write EXACTLY 2 distinct draft options:
+   - "Draft 1:" must be written in pure, natural ${lang1}.
+   - "Draft 2:" must be written in authentic conversational ${lang2} (Roman script, as spoken in India).
+2. Word count: Each draft must be 30–65 words.
+3. Tone must strictly match the customer rating: ${sentiment}.
+4. Naturally incorporate any highlighted aspects, customer tags, service keywords, or customer personal notes provided.
+5. DO NOT invent specific unmentioned facts (do not invent staff names, prices, or fake items).
+6. No emojis, no hashtags, no promotional marketing slogans.
+7. Keep the tone natural, genuine, and relatable.`;
 
   const userPrompt = `Business: ${businessName}
 ${categoryContext}
-${addressContext}
+${locationContext}
+${keywordsContext}
 ${highlightsContext}
+${aspectsContext}
+${tagsContext}
 ${customerNoteContext}
 Customer rating: ${rating}/5 stars (${sentiment})
 
-Generate 2 short, personalized Hinglish review drafts for this business.`;
+Generate Draft 1 in ${lang1} and Draft 2 in ${lang2}.`;
 
   const response = await client.chat.completions.create({
     model,
@@ -163,7 +209,7 @@ Generate 2 short, personalized Hinglish review drafts for this business.`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
-    max_tokens: 400,
+    max_tokens: 450,
     temperature: 0.8,
   });
 
@@ -209,8 +255,8 @@ function parseDrafts(content: string): [string, string] {
     return [parts[0], parts[1]];
   }
 
-  // Last resort: use the whole text as draft 1, generate a slight variant as draft 2
-  const fallback = content.trim() || 'Achha experience raha. Recommend karunga.';
+  // Last resort
+  const fallback = content.trim() || 'Great service and overall wonderful experience. Highly recommend!';
   return [fallback, fallback];
 }
 
