@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { DashboardStats } from '@/types';
-import FindBusinessOnGoogleMaps from '@/components/FindBusinessOnGoogleMaps';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -33,14 +32,9 @@ export default function DashboardPage() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Your ReviewSpark performance at a glance</p>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-          <a href="#find-google-maps-section" className="btn btn-secondary" id="dashboard-find-maps-btn">
-            🔍 Find on Google Maps
-          </a>
-          <Link href="/businesses" className="btn btn-primary" id="dashboard-add-business-btn">
-            + Add Business
-          </Link>
-        </div>
+        <Link href="/businesses" className="btn btn-primary" id="dashboard-add-business-btn">
+          + Add Business
+        </Link>
       </div>
 
       {loading && (
@@ -71,11 +65,6 @@ export default function DashboardPage() {
               label="AI Cost"
               icon="💰"
             />
-          </div>
-
-          {/* Section: Find Business on Google Maps */}
-          <div id="find-google-maps-section" style={{ marginBottom: 'var(--space-xl)' }}>
-            <FindBusinessOnGoogleMaps standalone={true} />
           </div>
 
           {stats.monthly_trends.length > 0 && (

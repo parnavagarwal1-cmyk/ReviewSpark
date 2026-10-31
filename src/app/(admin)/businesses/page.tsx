@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 import Link from 'next/link';
 import type { Business, PaginatedResponse, CreateBusinessInput } from '@/types';
-import FindBusinessOnGoogleMaps from '@/components/FindBusinessOnGoogleMaps';
 
 export default function BusinessesPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -12,8 +11,7 @@ export default function BusinessesPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [initialModalTab, setInitialModalTab] = useState<'search' | 'url'>('search');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const PAGE_SIZE = 20;
 
@@ -42,19 +40,6 @@ export default function BusinessesPage() {
     const timer = setTimeout(loadBusinesses, search ? 400 : 0);
     return () => clearTimeout(timer);
   }, [loadBusinesses, search]);
-
-  // Open modal if URL query parameter requested it
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('search_maps') === 'true') {
-        setInitialModalTab('search');
-        setShowAddModal(true);
-      } else if (params.get('add') === 'true') {
-        setShowAddModal(true);
-      }
-    }
-  }, []);
 
   async function toggleActive(business: Business) {
     try {
@@ -93,37 +78,22 @@ export default function BusinessesPage() {
           <h1 className="page-title">Businesses</h1>
           <p className="page-subtitle">{count.toLocaleString()} client businesses</p>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--space-sm)', flexWrap: 'wrap' }}>
-          <button
-            id="find-google-maps-btn"
-            className="btn btn-secondary"
-            onClick={() => {
-              setInitialModalTab('search');
-              setShowAddModal(true);
-            }}
-          >
-            🔍 Find on Google Maps
-          </button>
-          <button
-            id="add-business-btn"
-            className="btn btn-primary"
-            onClick={() => {
-              setInitialModalTab('search');
-              setShowAddModal(true);
-            }}
-          >
-            + Add Business
-          </button>
-        </div>
+        <button
+          id="add-business-btn"
+          className="btn btn-primary"
+          onClick={() => setShowAddForm(true)}
+        >
+          + Add Business
+        </button>
       </div>
 
-      {showAddModal && (
+      {showAddForm && (
         <AddBusinessModal
-          initialTab={initialModalTab}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => setShowAddForm(false)}
           onSuccess={(newBusiness) => {
             setBusinesses((prev) => [newBusiness, ...prev]);
             setCount((c) => c + 1);
+            setShowAddForm(false);
           }}
         />
       )}
@@ -136,10 +106,7 @@ export default function BusinessesPage() {
             type="search"
             placeholder="Search businesses…"
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             aria-label="Search businesses"
             id="business-search-input"
           />
@@ -151,10 +118,7 @@ export default function BusinessesPage() {
 
       {/* Table */}
       {loading ? (
-        <div
-          className="card"
-          style={{ textAlign: 'center', padding: '3rem', color: 'var(--admin-text-muted)' }}
-        >
+        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--admin-text-muted)' }}>
           <div className="spinner spinner-dark" style={{ margin: '0 auto 1rem' }} />
           Loading businesses…
         </div>
@@ -168,12 +132,9 @@ export default function BusinessesPage() {
             <button
               className="btn btn-primary"
               style={{ marginTop: '1rem' }}
-              onClick={() => {
-                setInitialModalTab('search');
-                setShowAddModal(true);
-              }}
+              onClick={() => setShowAddForm(true)}
             >
-              🔍 Find Business on Google Maps
+              + Add First Business
             </button>
           )}
         </div>
@@ -198,37 +159,18 @@ export default function BusinessesPage() {
                       {b.business_name}
                     </div>
                     {b.address && (
-                      <div
-                        style={{
-                          fontSize: '0.75rem',
-                          color: 'var(--admin-text-muted)',
-                          marginTop: '2px',
-                        }}
-                      >
-                        {b.address.slice(0, 60)}
-                        {b.address.length > 60 ? '…' : ''}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)', marginTop: '2px' }}>
+                        {b.address.slice(0, 60)}{b.address.length > 60 ? '…' : ''}
                       </div>
                     )}
                   </td>
                   <td>
-                    <code
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--brand-primary-light)',
-                        background: 'rgba(99,102,241,0.1)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                      }}
-                    >
+                    <code style={{ fontSize: '0.8rem', color: 'var(--brand-primary-light)', background: 'rgba(99,102,241,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
                       {b.public_token}
                     </code>
                   </td>
                   <td>
-                    <span
-                      className={`badge ${
-                        b.data_source === 'google_places' ? 'badge-info' : 'badge-warning'
-                      }`}
-                    >
+                    <span className={`badge ${b.data_source === 'google_places' ? 'badge-info' : 'badge-warning'}`}>
                       {b.data_source === 'google_places' ? '🔍 Google' : '✏️ Manual'}
                     </span>
                   </td>
@@ -290,13 +232,7 @@ export default function BusinessesPage() {
           >
             ← Prev
           </button>
-          <span
-            style={{
-              color: 'var(--admin-text-muted)',
-              fontSize: '0.875rem',
-              padding: '0 var(--space-sm)',
-            }}
-          >
+          <span style={{ color: 'var(--admin-text-muted)', fontSize: '0.875rem', padding: '0 var(--space-sm)' }}>
             Page {page} of {totalPages}
           </span>
           <button
@@ -316,37 +252,32 @@ export default function BusinessesPage() {
 // ── Add Business Modal ────────────────────────────────────────────────────
 
 interface AddBusinessModalProps {
-  initialTab?: 'search' | 'url';
   onClose: () => void;
   onSuccess: (business: Business) => void;
 }
 
-function AddBusinessModal({ initialTab = 'search', onClose, onSuccess }: AddBusinessModalProps) {
-  const [activeTab, setActiveTab] = useState<'search' | 'url'>(initialTab);
-
-  // Manual URL State
+function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
   const [googleUrl, setGoogleUrl] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [address, setAddress] = useState('');
   const [category, setCategory] = useState('');
-  const [manualCustomContext, setManualCustomContext] = useState('');
-  const [manualLoading, setManualLoading] = useState(false);
-  const [manualError, setManualError] = useState('');
+  const [customContext, setCustomContext] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [needsManual, setNeedsManual] = useState(false);
 
-  // Direct URL submission fallback
-  async function handleManualSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setManualError('');
-    setManualLoading(true);
+    setError('');
+    setLoading(true);
 
     try {
       const body: CreateBusinessInput = {
-        google_review_url: googleUrl.trim(),
+        google_review_url: googleUrl,
         business_name: businessName.trim() || undefined,
         address: address.trim() || undefined,
         category: category.trim() || undefined,
-        custom_context: manualCustomContext.trim() || undefined,
+        custom_context: customContext.trim() || undefined,
       };
 
       const res = await fetch('/api/businesses', {
@@ -360,225 +291,161 @@ function AddBusinessModal({ initialTab = 'search', onClose, onSuccess }: AddBusi
       if (!res.ok) {
         if (data.needs_manual_entry) {
           setNeedsManual(true);
-          setManualError(data.error);
+          setError(data.error);
         } else {
-          setManualError(data.error ?? 'Failed to create business');
+          setError(data.error ?? 'Failed to create business');
         }
         return;
       }
 
       onSuccess(data);
     } catch {
-      setManualError('Network error. Please try again.');
+      setError('Network error. Please try again.');
     } finally {
-      setManualLoading(false);
+      setLoading(false);
     }
   }
 
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        position: 'fixed', inset: 0, zIndex: 100,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '1rem',
-        background: 'rgba(0,0,0,0.75)',
-        backdropFilter: 'blur(6px)',
+        background: 'rgba(0,0,0,0.7)',
+        backdropFilter: 'blur(4px)',
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         className="card"
-        style={{
-          width: '100%',
-          maxWidth: '680px',
-          maxHeight: '92vh',
-          overflowY: 'auto',
-          boxShadow: 'var(--shadow-xl)',
-        }}
+        style={{ width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-business-modal-title"
       >
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 'var(--space-md)',
-            borderBottom: '1px solid var(--admin-border)',
-            paddingBottom: 'var(--space-sm)',
-          }}
-        >
-          <div>
-            <h2 id="add-business-modal-title" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-              Add New Business
-            </h2>
-            <p style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)', marginTop: '2px' }}>
-              Search on Google Maps or enter business details directly.
-            </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+          <h2 id="add-business-modal-title" style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+            Add New Business
+          </h2>
+          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close modal">✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="google-url-input">
+              Google Review URL *
+            </label>
+            <input
+              id="google-url-input"
+              type="url"
+              className="form-input"
+              placeholder="https://maps.google.com/maps/place/..."
+              value={googleUrl}
+              onChange={(e) => setGoogleUrl(e.target.value)}
+              required
+              autoFocus
+            />
+            <span className="form-hint">
+              Paste the client&apos;s Google Maps or Google Review URL. We&apos;ll resolve the business details automatically.
+            </span>
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose} aria-label="Close modal">
-            ✕
-          </button>
-        </div>
 
-        {/* Tabs */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 'var(--space-xs)',
-            marginBottom: 'var(--space-lg)',
-            borderBottom: '1px solid var(--admin-border)',
-            paddingBottom: 'var(--space-xs)',
-          }}
-        >
-          <button
-            type="button"
-            className={`btn btn-sm ${activeTab === 'search' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setActiveTab('search')}
-            id="tab-google-maps-search"
-          >
-            🔍 Find on Google Maps
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${activeTab === 'url' ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setActiveTab('url')}
-            id="tab-direct-url"
-          >
-            🔗 Enter Review URL
-          </button>
-        </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="business-name-input">
+              Business Name {needsManual ? '*' : '(Optional — auto-detected if empty)'}
+            </label>
+            <input
+              id="business-name-input"
+              type="text"
+              className="form-input"
+              placeholder="e.g. Sharma Sweets"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              required={needsManual}
+            />
+            <span className="form-hint">
+              {needsManual
+                ? 'Please enter the client business name to complete setup.'
+                : 'Leave blank to auto-detect from Google Maps URL, or type it here.'}
+            </span>
+          </div>
 
-        {/* TAB 1: FIND ON GOOGLE MAPS */}
-        {activeTab === 'search' && (
-          <FindBusinessOnGoogleMaps
-            onSuccess={(biz) => onSuccess(biz)}
-            standalone={false}
-          />
-        )}
+          <div className="form-group">
+            <label className="form-label" htmlFor="custom-context-input">
+              ✨ Business Details &amp; Highlights (Optional)
+            </label>
+            <textarea
+              id="custom-context-input"
+              className="form-input"
+              rows={2}
+              placeholder="e.g. Famous for Paneer Butter Masala &amp; Garlic Naan, quick home delivery, valet parking"
+              value={customContext}
+              onChange={(e) => setCustomContext(e.target.value)}
+            />
+            <span className="form-hint">
+              Add popular dishes, key services, or specialties to make AI-generated reviews feel authentic and personalized.
+            </span>
+          </div>
 
-        {/* TAB 2: DIRECT URL ENTRY (MANUAL) */}
-        {activeTab === 'url' && (
-          <form onSubmit={handleManualSubmit}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="google-url-input">
-                Google Review URL *
-              </label>
-              <input
-                id="google-url-input"
-                type="url"
-                className="form-input"
-                placeholder="https://maps.google.com/maps/place/..."
-                value={googleUrl}
-                onChange={(e) => setGoogleUrl(e.target.value)}
-                required
-                autoFocus
-              />
-              <span className="form-hint">
-                Paste the client&apos;s Google Maps or Google Review URL.
-              </span>
-            </div>
+          {needsManual && (
+            <>
+              <div className="form-group">
+                <label className="form-label" htmlFor="address-input">Address (Optional)</label>
+                <input
+                  id="address-input"
+                  type="text"
+                  className="form-input"
+                  placeholder="123 MG Road, Bengaluru"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="business-name-input">
-                Business Name {needsManual ? '*' : '(Optional — auto-detected if empty)'}
-              </label>
-              <input
-                id="business-name-input"
-                type="text"
-                className="form-input"
-                placeholder="e.g. Sharma Dental Clinic"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                required={needsManual}
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-input">Category (Optional)</label>
+                <input
+                  id="category-input"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Restaurant, Salon, Clinic"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                />
+              </div>
+            </>
+          )}
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="manual-custom-context-input">
-                ✨ Business Details &amp; Highlights (Optional)
-              </label>
-              <textarea
-                id="manual-custom-context-input"
-                className="form-input"
-                rows={2}
-                placeholder="e.g. Famous for Root Canal, warm staff, clean clinic"
-                value={manualCustomContext}
-                onChange={(e) => setManualCustomContext(e.target.value)}
-              />
-            </div>
+          {error && (
+            <div className="alert alert-error">{error}</div>
+          )}
 
-            {needsManual && (
-              <>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="address-input">
-                    Address (Optional)
-                  </label>
-                  <input
-                    id="address-input"
-                    type="text"
-                    className="form-input"
-                    placeholder="123 Main Road, City"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="category-input">
-                    Category (Optional)
-                  </label>
-                  <input
-                    id="category-input"
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Clinic, Restaurant, Salon"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            {manualError && <div className="alert alert-error">{manualError}</div>}
-
-            <div
-              style={{
-                display: 'flex',
-                gap: 'var(--space-sm)',
-                marginTop: 'var(--space-lg)',
-              }}
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-lg)' }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onClose}
             >
-              <button type="button" className="btn btn-ghost" onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={manualLoading || !googleUrl || (needsManual && !businessName.trim())}
-                id="add-business-submit-btn"
-                style={{ flex: 1 }}
-              >
-                {manualLoading ? (
-                  <>
-                    <span className="spinner" />
-                    Adding Business…
-                  </>
-                ) : (
-                  'Add Business'
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading || !googleUrl || (needsManual && !businessName.trim())}
+              id="add-business-submit-btn"
+              style={{ flex: 1 }}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner" />
+                  Adding Business…
+                </>
+              ) : (
+                'Add Business'
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

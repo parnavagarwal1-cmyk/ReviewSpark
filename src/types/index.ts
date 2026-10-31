@@ -6,7 +6,6 @@ export interface Business {
   id: string;
   public_token: string;
   google_review_url: string;
-  google_maps_url?: string | null;
   place_id: string | null;
   business_name: string;
   address: string | null;
@@ -61,8 +60,6 @@ export interface AdminSession {
 
 export interface CreateBusinessInput {
   google_review_url: string;
-  google_maps_url?: string;
-  place_id?: string;
   business_name?: string;   // required if data_source ends up 'manual'
   address?: string;
   category?: string;
@@ -75,32 +72,7 @@ export interface UpdateBusinessInput {
   category?: string;
   is_active?: boolean;
   google_review_url?: string;
-  google_maps_url?: string;
-  place_id?: string;
   custom_context?: string;
-}
-
-// ── Google Places API (New) Types ───────────────────────────
-
-export interface GooglePlaceSearchResult {
-  id: string; // Place ID
-  displayName: string;
-  formattedAddress: string | null;
-  googleMapsUri: string | null;
-  primaryType: string | null;
-}
-
-export interface GooglePlaceDetailsResult {
-  id: string;
-  displayName: string;
-  formattedAddress: string | null;
-  googleMapsUri: string | null;
-  writeAReviewUri: string | null;
-  primaryType: string | null;
-  already_registered?: boolean;
-  existing_business_id?: string;
-  existing_business_name?: string;
-  existing_public_token?: string;
 }
 
 export interface DraftGenerationInput {
