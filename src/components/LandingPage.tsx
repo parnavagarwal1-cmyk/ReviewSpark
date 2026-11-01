@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 
 export default function LandingPage() {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -53,8 +52,8 @@ export default function LandingPage() {
       a: 'Yes, 100%. ReviewSpark never offers gifts or discounts for reviews, never auto-posts on behalf of users, and never posts bot-generated content. Real customers write, edit, and post the reviews themselves from their personal Google accounts.',
     },
     {
-      q: 'How long does it take to set up?',
-      a: 'Less than 2 minutes! You simply sign in to your dashboard, search or paste your Google Business listing, download your printable QR code, and put it on your counter.',
+      q: 'How do I get my ready-to-print QR stand?',
+      a: 'Simply contact us at parnavagarwal1@gmail.com with your business details and Google Maps listing. We will set up everything for you and send you your ready-to-print QR code stand in high resolution.',
     },
     {
       q: 'Can I use ReviewSpark for multiple branches or locations?',
@@ -92,7 +91,7 @@ export default function LandingPage() {
           <nav className="desktop-nav">
             <a href="#how-it-works" className="nav-link">How it works</a>
             <a href="#features" className="nav-link">Features</a>
-            <a href="#pricing" className="nav-link">Pricing</a>
+            <a href="#contact" className="nav-link">Contact Us</a>
             <a href="#faq" className="nav-link">FAQ</a>
           </nav>
 
@@ -100,9 +99,9 @@ export default function LandingPage() {
             <Link href="/login" className="btn-nav-login">
               Login
             </Link>
-            <Link href="/login" className="btn-nav-primary">
-              Start Free
-            </Link>
+            <a href="#contact" className="btn-nav-primary">
+              Get Your QR
+            </a>
             <button
               type="button"
               className="mobile-hamburger"
@@ -119,15 +118,15 @@ export default function LandingPage() {
           <div className="mobile-menu-drawer">
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How it works</a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#pricing" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
+            <a href="#contact" onClick={() => setMobileMenuOpen(false)}>Contact Us</a>
             <a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
               <Link href="/login" className="btn-nav-login" style={{ flex: 1, textAlign: 'center' }}>
                 Login
               </Link>
-              <Link href="/login" className="btn-nav-primary" style={{ flex: 1, textAlign: 'center' }}>
-                Start Free
-              </Link>
+              <a href="#contact" className="btn-nav-primary" style={{ flex: 1, textAlign: 'center' }}>
+                Get Your QR
+              </a>
             </div>
           </div>
         )}
@@ -151,22 +150,20 @@ export default function LandingPage() {
             </p>
 
             <div className="hero-cta-group">
-              <Link href="/login" className="btn-hero-primary">
-                Start Free — 1 Min Setup
-              </Link>
+              <a href="#contact" className="btn-hero-primary">
+                Get Your QR Stand
+              </a>
               <a
-                href="https://wa.me/919044875974?text=Hi%2C%20I%20want%20to%20set%20up%20ReviewSpark%20for%20my%20business"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="mailto:parnavagarwal1@gmail.com?subject=Inquiry%20about%20ReviewSpark%20QR%20Stand"
                 className="btn-hero-secondary"
               >
-                <span style={{ fontSize: '1.1rem' }}>💬</span> WhatsApp Setup Help
+                <span>✉️</span> Contact Us
               </a>
             </div>
 
             <div className="hero-trust-row">
-              <span className="trust-item">✓ Free to start</span>
-              <span className="trust-item">✓ No credit card needed</span>
+              <span className="trust-item">✓ Easy setup</span>
+              <span className="trust-item">✓ Dedicated support</span>
               <span className="trust-item">✓ 100% Google Compliant</span>
             </div>
           </div>
@@ -400,90 +397,42 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Pricing Section ─────────────────────────────────────────────── */}
-      <section id="pricing" className="pricing-section">
+      {/* ── Contact Us Section ─────────────────────────────────────────── */}
+      <section id="contact" className="contact-section">
         <div className="landing-container">
-          <div className="section-head text-center">
-            <span className="section-kicker">Pricing</span>
-            <h2 className="section-title">Start free. Upgrade when you need more locations.</h2>
-            <p className="section-desc">
-              Free for a single shop. Growth plan when you want multi-location management and advanced features.
-            </p>
+          <div className="contact-card-wrapper">
+            <div className="contact-card-glow"></div>
+            <div className="contact-card-inner">
+              <span className="section-kicker" style={{ textAlign: 'center' }}>Get In Touch</span>
+              <h2 className="contact-card-title">
+                To get your QR stand or have any query, <span className="gradient-text">Contact Us</span>
+              </h2>
+              <p className="contact-card-desc">
+                Have questions, want a customized QR code stand for your shop or clinic, or need help setting up your Google Business Profile? Drop us an email anytime and we will get back to you promptly!
+              </p>
 
-            {/* Billing Toggle */}
-            <div className="pricing-toggle-wrapper">
-              <button
-                type="button"
-                className={`toggle-btn ${billingCycle === 'monthly' ? 'active' : ''}`}
-                onClick={() => setBillingCycle('monthly')}
-              >
-                Monthly
-              </button>
-              <button
-                type="button"
-                className={`toggle-btn ${billingCycle === 'annual' ? 'active' : ''}`}
-                onClick={() => setBillingCycle('annual')}
-              >
-                Annual <span className="discount-tag">20% OFF</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="pricing-cards-grid">
-            {/* Free Plan */}
-            <div className="pricing-card">
-              <div className="plan-badge">Start Here</div>
-              <h3 className="plan-name">Free</h3>
-              <p className="plan-desc">Try ReviewSpark with one location. No card needed.</p>
-              <div className="plan-price">
-                <span className="price-currency">₹</span>
-                <span className="price-val">0</span>
-                <span className="price-period">/ forever</span>
+              <div className="contact-email-box">
+                <span className="contact-email-label">DIRECT EMAIL CONTACT</span>
+                <a href="mailto:parnavagarwal1@gmail.com?subject=ReviewSpark%20QR%20Stand%20Inquiry" className="contact-email-link">
+                  <span className="contact-email-icon">✉️</span>
+                  <span>parnavagarwal1@gmail.com</span>
+                </a>
               </div>
 
-              <Link href="/login" className="btn-plan-outline">
-                Start Free
-              </Link>
-
-              <ul className="plan-features">
-                <li>✓ Unlimited QR scans</li>
-                <li>✓ 1 business location</li>
-                <li>✓ Dual English &amp; Hinglish AI drafts</li>
-                <li>✓ Aspect chips &amp; rating tags</li>
-                <li>✓ Printable QR code PDF download</li>
-                <li>✓ Basic analytics</li>
-                <li>✓ Google Places automatic lookup</li>
-              </ul>
-            </div>
-
-            {/* Growth Plan */}
-            <div className="pricing-card popular">
-              <div className="popular-ribbon">Most Popular</div>
-              <div className="plan-badge gradient">For Scaling Businesses</div>
-              <h3 className="plan-name">Growth</h3>
-              <p className="plan-desc">For chains, clinics, and multi-location businesses.</p>
-              <div className="plan-price">
-                <span className="price-currency">₹</span>
-                <span className="price-val">{billingCycle === 'annual' ? '319' : '399'}</span>
-                <span className="price-period">/ month</span>
+              <div className="contact-benefits-row">
+                <div className="contact-benefit-item">
+                  <span>🚀</span>
+                  <span>Instant Setup Support</span>
+                </div>
+                <div className="contact-benefit-item">
+                  <span>🖨️</span>
+                  <span>High-Resolution QR Stand PDF</span>
+                </div>
+                <div className="contact-benefit-item">
+                  <span>🤝</span>
+                  <span>Customized for Your Business</span>
+                </div>
               </div>
-              <div className="plan-billing-note">
-                {billingCycle === 'annual' ? 'Billed ₹3,828/year (Save 20%)' : 'Billed monthly'}
-              </div>
-
-              <Link href="/login" className="btn-plan-solid">
-                Get Growth Plan
-              </Link>
-
-              <ul className="plan-features">
-                <li>✓ Everything in Free Plan</li>
-                <li>✓ Multi-location business capacity</li>
-                <li>✓ Full private feedback inbox &amp; alert routing</li>
-                <li>✓ Local SEO keyword incorporation</li>
-                <li>✓ Advanced analytics &amp; conversion metrics</li>
-                <li>✓ Priority WhatsApp &amp; phone support</li>
-                <li>✓ Custom review threshold per branch</li>
-              </ul>
             </div>
           </div>
         </div>
@@ -532,13 +481,16 @@ export default function LandingPage() {
           <p className="bottom-cta-desc">
             Happy customers get an AI draft and post on Google Maps. 1-3 stars stay in your private inbox. You never auto-post.
           </p>
-          <Link href="/login" className="btn-hero-primary bottom-cta-btn">
-            Start Free — 1 Minute Setup
-          </Link>
+          <a
+            href="mailto:parnavagarwal1@gmail.com?subject=Get%20Started%20with%20ReviewSpark%20QR"
+            className="btn-hero-primary bottom-cta-btn"
+          >
+            Contact to Get Your QR Stand
+          </a>
           <div className="hero-trust-row" style={{ marginTop: '1.25rem' }}>
-            <span className="trust-item">✓ No credit card</span>
-            <span className="trust-item">✓ Free to start</span>
-            <span className="trust-item">✓ Cancel anytime</span>
+            <span className="trust-item">✓ Fast response</span>
+            <span className="trust-item">✓ Free consultation</span>
+            <span className="trust-item">✓ 100% Google Compliant</span>
           </div>
         </div>
       </section>
@@ -563,16 +515,14 @@ export default function LandingPage() {
           <div className="footer-links-row">
             <a href="#how-it-works">How it works</a>
             <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
+            <a href="#contact">Contact Us</a>
             <a href="#faq">FAQ</a>
             <Link href="/login">Admin Login</Link>
             <a
-              href="https://wa.me/919044875974?text=Hi%2C%20I%20have%20a%20question%20about%20ReviewSpark"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: '#22c55e', fontWeight: 600 }}
+              href="mailto:parnavagarwal1@gmail.com"
+              style={{ color: '#818cf8', fontWeight: 600 }}
             >
-              WhatsApp Support
+              ✉️ parnavagarwal1@gmail.com
             </a>
           </div>
 
