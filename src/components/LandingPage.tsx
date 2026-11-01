@@ -1,18 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  // Interactive Live Dashboard Demo State
   const [activeTab, setActiveTab] = useState<'all' | 'positive' | 'needs-reply'>('all');
   const [repliedPriya, setRepliedPriya] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [replyText, setReplyText] = useState(
     'Thank you Priya! We are thrilled you had such a wonderful visit. Looking forward to welcoming you back soon!'
   );
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const faqs = [
     {
@@ -21,7 +26,7 @@ export default function LandingPage() {
     },
     {
       q: 'Do customers need to download an application to review?',
-      a: 'No app is required! When customers scan the QR code using their default phone camera, it instantly opens in their browser (Chrome, Safari, etc.) without any login or download friction.',
+      a: 'No app is required! When customers scan the QR code using their default phone camera, it instantly opens in their browser — Chrome, Safari, etc. — without any login or download friction.',
     },
     {
       q: 'How do the AI-assisted review suggestions work?',
@@ -41,426 +46,387 @@ export default function LandingPage() {
     },
   ];
 
+  const stats = [
+    { value: '50,000+', label: 'Reviews Generated', icon: '⭐' },
+    { value: '2,400+', label: 'Businesses Trust Us', icon: '🏢' },
+    { value: '4.9 / 5', label: 'Average Rating Lift', icon: '📈' },
+    { value: '99%', label: 'Google Compliance', icon: '✓' },
+  ];
+
+  const features = [
+    {
+      tag: '01 · COLLECT',
+      title: 'Smart QR Counter Stand',
+      desc: 'One printable acrylic QR stand for your counter, table, or billing desk. Customers scan and leave reviews in 10 seconds — zero app download.',
+      icon: '📱',
+      visual: (
+        <div className="feat-photo-wrap">
+          <img src="/images/phone-scan.jpg" alt="QR Scan" className="feat-photo-img" />
+          <span className="feat-photo-badge">⚡ 10-Second Review</span>
+        </div>
+      ),
+    },
+    {
+      tag: '02 · GENERATE',
+      title: 'Dual-Language AI Drafts',
+      desc: 'Happy customers never stare at a blank box. AI generates authentic review drafts in English & Hinglish they can edit and post in one tap.',
+      icon: '✍️',
+      visual: (
+        <div className="feat-draft-wrap">
+          <div className="feat-draft-card en">
+            <span className="feat-draft-lang">Draft 1 · English</span>
+            <p>&quot;Superb service and welcoming team. Will definitely visit again!&quot;</p>
+          </div>
+          <div className="feat-draft-card hi">
+            <span className="feat-draft-lang">Draft 2 · Hinglish</span>
+            <p>&quot;Bohot badhiya experience tha, staff bhi kaafi helpful tha!&quot;</p>
+          </div>
+          <div className="feat-draft-action">
+            <span className="feat-draft-copy-btn">Copy &amp; Post to Google →</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      tag: '03 · PROTECT',
+      title: 'Negative Review Shield',
+      desc: 'Low ratings (1–3★) never reach Google Maps. They are silently intercepted and routed to your private dashboard so you can resolve them first.',
+      icon: '🛡️',
+      visual: (
+        <div className="feat-shield-wrap">
+          <div className="feat-shield-flow">
+            <div className="feat-flow-item bad">
+              <span className="feat-flow-star">★★☆☆☆</span>
+              <span className="feat-flow-label">2-Star Review</span>
+            </div>
+            <div className="feat-flow-arrow">→</div>
+            <div className="feat-flow-item shield">
+              <span className="feat-flow-icon">🛡️</span>
+              <span className="feat-flow-label">Private Inbox</span>
+            </div>
+            <div className="feat-flow-arrow">→</div>
+            <div className="feat-flow-item resolved">
+              <span className="feat-flow-icon">✓</span>
+              <span className="feat-flow-label">Resolved</span>
+            </div>
+          </div>
+          <div className="feat-shield-note">Google rating stays protected at 4.8★</div>
+        </div>
+      ),
+    },
+    {
+      tag: '04 · RESPOND',
+      title: 'AI Reply Assistant',
+      desc: 'Generate warm, human-sounding replies to every review in one click. Boost Google SEO and show customers you care — at scale.',
+      icon: '💬',
+      visual: (
+        <div className="feat-reply-wrap">
+          <div className="feat-reply-header">🤖 AI-Crafted Reply Ready</div>
+          <p className="feat-reply-text">&quot;Thank you Priya for your kind words! We are delighted you had a great experience. Looking forward to seeing you again!&quot;</p>
+          <div className="feat-reply-btn">⚡ Post to Google · 1 Click</div>
+        </div>
+      ),
+    },
+    {
+      tag: '05 · INSIGHTS',
+      title: 'Sentiment & Trend Analytics',
+      desc: 'Discover what customers love, detect wait-time spikes, identify staff highlights, and track reputation trends across weeks and months.',
+      icon: '📊',
+      visual: (
+        <div className="feat-analytics-wrap">
+          <div className="feat-bar-row"><span>Positive</span><div className="feat-bar"><div className="feat-bar-fill green" style={{ width: '94%' }}></div></div><span className="feat-bar-pct text-emerald">94%</span></div>
+          <div className="feat-bar-row"><span>Neutral</span><div className="feat-bar"><div className="feat-bar-fill yellow" style={{ width: '4%' }}></div></div><span className="feat-bar-pct">4%</span></div>
+          <div className="feat-bar-row"><span>Negative</span><div className="feat-bar"><div className="feat-bar-fill red" style={{ width: '2%' }}></div></div><span className="feat-bar-pct">2%</span></div>
+          <div className="feat-chip-row">
+            <span className="feat-chip">#polite_staff</span>
+            <span className="feat-chip">#fast_service</span>
+            <span className="feat-chip">#great_food</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      tag: '06 · SCALE',
+      title: 'Multi-Branch Dashboard',
+      desc: 'One dashboard to rule all your outlets. Track ratings per branch, compare performance, assign QR codes, and grow every location simultaneously.',
+      icon: '🏢',
+      visual: (
+        <div className="feat-branches-wrap">
+          {[
+            { name: 'Connaught Place', score: '4.9 ★', reviews: '420 reviews', up: true },
+            { name: 'Indiranagar, Bengaluru', score: '4.8 ★', reviews: '380 reviews', up: true },
+            { name: 'Bandra West, Mumbai', score: '4.8 ★', reviews: '480 reviews', up: false },
+          ].map((b, i) => (
+            <div key={i} className="feat-branch-row">
+              <div className="feat-branch-info">
+                <span className="feat-branch-name">{b.name}</span>
+                <span className="feat-branch-reviews">{b.reviews}</span>
+              </div>
+              <div className="feat-branch-score-box">
+                <span className="feat-branch-score">{b.score}</span>
+                <span className={`feat-branch-trend ${b.up ? 'up' : 'flat'}`}>{b.up ? '↑' : '→'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+  ];
+
   const comparison = [
-    {
-      feature: 'Review Collection',
-      traditional: 'Manual verbal requests, forgotten by customers',
-      reviewspark: 'Frictionless QR scan directly at checkout or tables',
-    },
-    {
-      feature: 'Customer Review Writing',
-      traditional: 'Customers struggle with what to write and leave',
-      reviewspark: 'AI drafts in English & Hinglish they can edit and post',
-    },
-    {
-      feature: 'Negative Feedback',
-      traditional: 'Disgruntled customers post directly to Google',
-      reviewspark: '1–3★ feedback is intercepted in your private inbox',
-    },
-    {
-      feature: 'Review Responses',
-      traditional: 'Time-consuming manual typing or ignored',
-      reviewspark: 'One-click contextual AI replies that sound human',
-    },
-    {
-      feature: 'Customer Sentiment',
-      traditional: 'Guesswork with no clear trend analysis',
-      reviewspark: 'Automated topic, emotion, and wait-time insights',
-    },
+    { feature: 'Review Collection', traditional: 'Manual verbal asks — usually forgotten', reviewspark: 'Instant QR scan at checkout, zero friction' },
+    { feature: 'Review Writing', traditional: 'Customers face a blank box and give up', reviewspark: 'AI drafts in English & Hinglish, edit & post' },
+    { feature: 'Negative Feedback', traditional: '1-star reviews posted directly to Google', reviewspark: '1–3★ privately intercepted into your inbox' },
+    { feature: 'Review Responses', traditional: 'Manual typing, hours of effort, often ignored', reviewspark: 'One-click AI replies in seconds, always on' },
+    { feature: 'Reputation Insights', traditional: 'Guesswork, no analytics whatsoever', reviewspark: 'Auto sentiment analysis, trends, and alerts' },
   ];
 
   const industries = [
     { name: 'Restaurants & Cafés', icon: '🍽️', placement: 'QR on tables & bill folders', image: '/images/restaurant-table.jpg' },
     { name: 'Salons & Spas', icon: '💇', placement: 'QR at mirrors & reception', image: '/images/salon-reception.jpg' },
-    { name: 'Dental & Medical Clinics', icon: '🩺', placement: 'QR at checkout & consultation', image: '/images/clinic-desk.jpg' },
-    { name: 'Gyms & Fitness Centers', icon: '🏋️', placement: 'QR at check-in desk', image: '/images/gym-desk.jpg' },
-    { name: 'Coaching & Institutes', icon: '📚', placement: 'QR at reception & classrooms', image: '/images/phone-scan.jpg' },
+    { name: 'Dental & Medical', icon: '🩺', placement: 'QR at checkout & consultation', image: '/images/clinic-desk.jpg' },
+    { name: 'Gyms & Fitness', icon: '🏋️', placement: 'QR at check-in desk', image: '/images/gym-desk.jpg' },
+    { name: 'Coaching Centers', icon: '📚', placement: 'QR at reception & classrooms', image: '/images/phone-scan.jpg' },
     { name: 'Hotels & Resorts', icon: '🏨', placement: 'QR at front desk & rooms', image: '/images/salon-reception.jpg' },
-    { name: 'Car & Bike Service', icon: '🚗', placement: 'QR on customer invoice & billing', image: '/images/phone-scan.jpg' },
-    { name: 'Retail & Boutiques', icon: '🛍️', placement: 'QR at billing checkout', image: '/images/retail-store.jpg' },
+    { name: 'Auto Service', icon: '🚗', placement: 'QR on customer invoice', image: '/images/phone-scan.jpg' },
+    { name: 'Retail & Boutiques', icon: '🛍️', placement: 'QR at billing counter', image: '/images/retail-store.jpg' },
   ];
 
   return (
-    <div className="landing-root-in">
-      {/* ── Top Navbar ─────────────────────────────────────────────────── */}
-      <header className="landing-header-in">
-        <div className="landing-container-in header-inner-in">
-          <Link href="/" className="landing-logo-in">
-            <span className="logo-spark-icon-in">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="#10b981">
+    <div className="lp">
+
+      {/* ── Navbar ────────────────────────────────────────────────────────── */}
+      <header className={`lp-nav ${scrolled ? 'scrolled' : ''}`}>
+        <div className="lp-container lp-nav-inner">
+          <Link href="/" className="lp-logo">
+            <span className="lp-logo-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#10b981">
                 <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
               </svg>
             </span>
-            <span className="logo-text-in">
-              Review<span className="logo-accent-in">Spark</span>
-            </span>
+            Review<span className="lp-logo-spark">Spark</span>
           </Link>
 
-          <nav className="desktop-nav-in">
-            <a href="#overview" className="nav-link-in">Overview</a>
-            <a href="#features" className="nav-link-in">Features</a>
-            <a href="#comparison" className="nav-link-in">Why Us</a>
-            <a href="#how-it-works" className="nav-link-in">How It Works</a>
-            <a href="#faq" className="nav-link-in">FAQ</a>
+          <nav className="lp-nav-links">
+            <a href="#features">Features</a>
+            <a href="#comparison">Why Us</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#industries">Industries</a>
+            <a href="#faq">FAQ</a>
           </nav>
 
-          <div className="header-actions-in">
-            <Link href="/login" className="btn-nav-login-in">
-              Sign In
-            </Link>
-            <Link href="/login" className="btn-nav-primary-in">
-              Open Dashboard
-            </Link>
+          <div className="lp-nav-actions">
+            <Link href="/login" className="lp-btn-ghost">Sign In</Link>
+            <Link href="/login" className="lp-btn-primary">Get Started Free →</Link>
             <button
               type="button"
-              className="mobile-hamburger-in"
+              className="lp-hamburger"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
-              ☰
+              <span></span><span></span><span></span>
             </button>
           </div>
         </div>
-
-        {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="mobile-drawer-in">
-            <a href="#overview" onClick={() => setMobileMenuOpen(false)}>Overview</a>
-            <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#comparison" onClick={() => setMobileMenuOpen(false)}>Why Us</a>
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
-            <a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-              <Link href="/login" className="btn-nav-login-in" style={{ flex: 1, textAlign: 'center' }}>
-                Sign In
-              </Link>
-              <Link href="/login" className="btn-nav-primary-in" style={{ flex: 1, textAlign: 'center' }}>
-                Open Dashboard
-              </Link>
+          <div className="lp-mobile-drawer">
+            {['#features','#comparison','#how-it-works','#industries','#faq'].map((href, i) => (
+              <a key={i} href={href} onClick={() => setMobileMenuOpen(false)}>
+                {['Features','Why Us','How It Works','Industries','FAQ'][i]}
+              </a>
+            ))}
+            <div className="lp-mobile-btns">
+              <Link href="/login" className="lp-btn-ghost" style={{flex:1,textAlign:'center'}}>Sign In</Link>
+              <Link href="/login" className="lp-btn-primary" style={{flex:1,textAlign:'center'}}>Get Started →</Link>
             </div>
           </div>
         )}
       </header>
 
-      {/* ── Hero Section ────────────────────────────────────────────────── */}
-      <section id="overview" className="hero-section-in">
-        <div className="hero-ambient-glow"></div>
-        <div className="landing-container-in hero-inner-in">
-          
-          <div className="hero-badge-in">
-            <span className="hero-badge-dot"></span>
-            <span>AI Reputation &amp; Customer Review Management Platform</span>
-          </div>
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section id="overview" className="lp-hero">
+        <div className="lp-hero-glow-top"></div>
+        <div className="lp-hero-grid-bg"></div>
 
-          <h1 className="hero-headline-in">
-            More Than Reviews.<br />
-            <span className="gradient-text-emerald">A Brighter Tomorrow.</span>
-          </h1>
+        <div className="lp-container lp-hero-inner">
+          {/* Left Copy */}
+          <div className="lp-hero-copy">
+            <div className="lp-pill">
+              <span className="lp-pill-dot"></span>
+              AI-Powered Reputation Management · India
+            </div>
 
-          <p className="hero-description-in">
-            ReviewSpark helps businesses manage customer reviews, automate feedback collection with smart QR stands, respond with contextual AI, track reputation sentiment, and grow from one unified platform.
-          </p>
+            <h1 className="lp-hero-h1">
+              Turn Every Customer Into a<br />
+              <span className="lp-grad">5-Star Google Review.</span>
+            </h1>
 
-          <div className="hero-actions-in">
-            <Link href="/login" className="btn-hero-primary-in">
-              Start Managing Reviews
-            </Link>
-            <a href="#how-it-works" className="btn-hero-secondary-in">
-              See How It Works ↓
-            </a>
-          </div>
+            <p className="lp-hero-sub">
+              Smart QR counter stands · Dual-language AI review drafts · Negative review protection · Reply automation — all in one platform built for Indian local businesses.
+            </p>
 
-          {/* Hero Stand Showcase Photo */}
-          <div className="hero-stand-showcase-container">
-            <div className="hero-stand-card">
-              <div className="hero-stand-img-wrap">
-                <img
-                  src="/images/qr-stand-420.webp"
-                  alt="ReviewSpark Smart Acrylic QR Stand"
-                  className="hero-stand-img"
-                  width={340}
-                  height={340}
-                />
+            <div className="lp-hero-cta-row">
+              <Link href="/login" className="lp-btn-primary lp-btn-lg">
+                Start for Free →
+              </Link>
+              <a href="#how-it-works" className="lp-btn-outline">
+                See How It Works
+              </a>
+            </div>
+
+            <div className="lp-hero-social-proof">
+              <div className="lp-proof-avatars">
+                {['PS','RK','AM','SK','NJ'].map((init, i) => (
+                  <span key={i} className="lp-proof-av" style={{ zIndex: 5 - i }}>{init}</span>
+                ))}
               </div>
-              <div className="hero-stand-badge-row">
-                <span className="stand-pill">✨ Premium Acrylic Stand</span>
-                <span className="stand-badge-qr">Smart QR &amp; Tap to Review</span>
-                <span className="stand-badge-rating">⭐⭐⭐⭐⭐ 4.9 Verified</span>
+              <div className="lp-proof-text">
+                <strong>2,400+ businesses</strong> already trust ReviewSpark
+                <div className="lp-proof-stars">★★★★★ <span>4.9 avg rating</span></div>
               </div>
             </div>
           </div>
 
-          {/* ── Interactive Live Dashboard Mockup ───────────────────────── */}
-          <div className="dashboard-mockup-wrapper">
-            <div className="dashboard-mockup-card">
-              
-              {/* Top Dashboard Header */}
-              <div className="mock-topbar">
-                <div className="mock-window-dots">
-                  <span className="dot red"></span>
-                  <span className="dot yellow"></span>
-                  <span className="dot green"></span>
-                </div>
-                <div className="mock-title-bar">ReviewSpark Unified Reputation Dashboard</div>
-                <div className="mock-status-pill">● Live Insights</div>
+          {/* Right — QR Stand + Dashboard Preview */}
+          <div className="lp-hero-visual">
+            {/* Floating stat cards */}
+            <div className="lp-float-card lp-float-top-left">
+              <span className="lp-float-icon">⭐</span>
+              <div>
+                <div className="lp-float-val">4.8 → 4.9</div>
+                <div className="lp-float-lbl">Rating improved</div>
               </div>
-
-              {/* 4 Stats Metrics */}
-              <div className="mock-stats-grid">
-                <div className="mock-stat-card">
-                  <span className="mock-stat-label">Average Rating</span>
-                  <div className="mock-stat-val text-amber">4.8 ★</div>
-                  <span className="mock-stat-trend text-emerald">↑ +0.4 this month</span>
-                </div>
-                <div className="mock-stat-card">
-                  <span className="mock-stat-label">Total Reviews</span>
-                  <div className="mock-stat-val text-white">1,280+</div>
-                  <span className="mock-stat-trend text-emerald">↑ +18% QR scans</span>
-                </div>
-                <div className="mock-stat-card">
-                  <span className="mock-stat-label">Positive Sentiment</span>
-                  <div className="mock-stat-val text-emerald">94%</div>
-                  <span className="mock-stat-trend text-white-muted">Based on 1.2k ratings</span>
-                </div>
-                <div className="mock-stat-card">
-                  <span className="mock-stat-label">Response Rate</span>
-                  <div className="mock-stat-val text-teal">99%</div>
-                  <span className="mock-stat-trend text-emerald">⚡ Instant AI replies</span>
-                </div>
+            </div>
+            <div className="lp-float-card lp-float-top-right">
+              <span className="lp-float-icon lp-icon-shield">🛡️</span>
+              <div>
+                <div className="lp-float-val">0 leaks</div>
+                <div className="lp-float-lbl">Bad reviews protected</div>
               </div>
+            </div>
 
-              {/* Interactive Reviews Feed Simulation */}
-              <div className="mock-feed-section">
-                <div className="mock-feed-header">
-                  <div className="mock-feed-tabs">
-                    <button
-                      type="button"
-                      className={`mock-feed-tab ${activeTab === 'all' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('all')}
-                    >
-                      All Reviews (1,280)
-                    </button>
-                    <button
-                      type="button"
-                      className={`mock-feed-tab ${activeTab === 'positive' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('positive')}
-                    >
-                      5★ Google Reviews
-                    </button>
-                    <button
-                      type="button"
-                      className={`mock-feed-tab ${activeTab === 'needs-reply' ? 'active' : ''}`}
-                      onClick={() => setActiveTab('needs-reply')}
-                    >
-                      Needs Reply (1)
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mock-review-items">
-                  {/* Review 1 */}
-                  <div className="mock-review-item">
-                    <div className="mock-reviewer-header">
-                      <div className="mock-avatar">PS</div>
-                      <div className="mock-reviewer-info">
-                        <div className="mock-reviewer-name">Priya Sharma</div>
-                        <div className="mock-review-meta">5.0 ★ · Google Maps Review · 2 hours ago</div>
-                      </div>
-                      <span className="mock-badge-success">✓ Published to Google</span>
-                    </div>
-                    <p className="mock-review-text">
-                      &quot;Great service and amazing experience. The staff was super polite and welcoming. Highly recommend!&quot;
-                    </p>
-
-                    {/* AI Reply Box */}
-                    <div className="mock-ai-reply-box">
-                      <div className="mock-ai-label">
-                        <span>🤖 Smart AI Generated Reply</span>
-                        <span className="mock-ai-tag">Personalized &amp; Human</span>
-                      </div>
-                      {repliedPriya ? (
-                        <p className="mock-reply-sent">✓ Sent: &quot;{replyText}&quot;</p>
-                      ) : (
-                        <>
-                          <textarea
-                            className="mock-reply-textarea"
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            rows={2}
-                          />
-                          <button
-                            type="button"
-                            className="btn-mock-reply"
-                            onClick={() => setRepliedPriya(true)}
-                          >
-                            Send Reply via AI
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Review 2 - Low Rating Protected */}
-                  <div className="mock-review-item private-shield">
-                    <div className="mock-reviewer-header">
-                      <div className="mock-avatar orange">RM</div>
-                      <div className="mock-reviewer-info">
-                        <div className="mock-reviewer-name">Rahul Mehta</div>
-                        <div className="mock-review-meta">2.0 ★ · Private Feedback Filter · Yesterday</div>
-                      </div>
-                      <span className="mock-badge-shield">🛡️ Protected from Public Google</span>
-                    </div>
-                    <p className="mock-review-text">
-                      &quot;The food was good, but our waiting time on Sunday afternoon was a bit too long.&quot;
-                    </p>
-                    <div className="mock-internal-note">
-                      <span>💡 Internal Recommendation:</span> Peak wait time alert logged. Manager contacted customer privately to resolve. Public rating remains protected at 4.8★.
-                    </div>
-                  </div>
-                </div>
+            <div className="lp-stand-card">
+              <div className="lp-stand-glow"></div>
+              <img
+                src="/images/qr-stand-420.webp"
+                alt="ReviewSpark Acrylic QR Counter Stand"
+                className="lp-stand-img"
+              />
+              <div className="lp-stand-label-row">
+                <span className="lp-stand-lbl">✨ Premium Acrylic Stand</span>
+                <span className="lp-stand-lbl lp-stand-lbl-amber">⭐ 4.9 Verified</span>
               </div>
+            </div>
 
+            <div className="lp-float-card lp-float-bottom-center">
+              <span className="lp-float-icon lp-icon-green">✓</span>
+              <div>
+                <div className="lp-float-val">38 reviews</div>
+                <div className="lp-float-lbl">Collected this week</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Key Features Grid (01–06) ────────────────────────────────────── */}
-      <section id="features" className="section-in">
-        <div className="landing-container-in">
-          <div className="section-header-in">
-            <span className="kicker-in">Platform Capabilities</span>
-            <h2 className="title-in">Built for reputation, designed for growth</h2>
-            <p className="desc-in">
-              ReviewSpark replaces manual follow-ups and generic tools with an intelligent, friction-free ecosystem.
-            </p>
+      {/* ── Stats Strip ──────────────────────────────────────────────────── */}
+      <div className="lp-stats-strip">
+        <div className="lp-container lp-stats-inner">
+          {stats.map((s, i) => (
+            <div key={i} className="lp-stat-item">
+              <div className="lp-stat-val">{s.value}</div>
+              <div className="lp-stat-lbl">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Live Dashboard Mockup ─────────────────────────────────────────── */}
+      <section className="lp-section">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">Live Dashboard</span>
+            <h2 className="lp-h2">Real-time reputation command center</h2>
+            <p className="lp-section-sub">Every review, reply, and rating in one place. Watch your reputation grow in real time.</p>
           </div>
 
-          <div className="features-grid-in">
-            {/* Feature 01 */}
-            <div className="feature-card-in">
-              <div className="feature-card-top">
-                <span className="feature-icon-in">📱</span>
-                <span className="feature-tag-in">01 · COLLECT</span>
+          <div className="lp-dashboard-card">
+            <div className="lp-dash-topbar">
+              <div className="lp-dash-dots">
+                <span className="lp-dot red"></span>
+                <span className="lp-dot yellow"></span>
+                <span className="lp-dot green"></span>
               </div>
-              <h3 className="feature-title-in">Get More Reviews</h3>
-              <p className="feature-desc-in">
-                One printable QR stand for your counter, table, or billing desk. Customers scan and leave reviews in 10 seconds.
-              </p>
-              <div className="feature-visual-img-wrap">
-                <img src="/images/phone-scan.jpg" alt="Collect Reviews QR" className="feature-visual-img" />
-                <span className="feature-visual-overlay-badge">⚡ 10-Second QR Scan</span>
-              </div>
+              <div className="lp-dash-title">ReviewSpark · Unified Reputation Dashboard</div>
+              <div className="lp-dash-live">● Live</div>
             </div>
 
-            {/* Feature 02 */}
-            <div className="feature-card-in">
-              <div className="feature-card-top">
-                <span className="feature-icon-in">✍️</span>
-                <span className="feature-tag-in">02 · GENERATE</span>
-              </div>
-              <h3 className="feature-title-in">Smart AI Review Drafts</h3>
-              <p className="feature-desc-in">
-                Dual-language review generator providing customers authentic drafts in both English and conversational Hinglish.
-              </p>
-              <div className="feature-ai-draft-box">
-                <div className="ai-draft-card-mini">
-                  <span className="draft-lang-tag">Draft 1 · English</span>
-                  <p>&quot;Superb service and welcoming team. Highly recommended!&quot;</p>
+            <div className="lp-dash-metrics">
+              {[
+                { label: 'Avg Rating', val: '4.8 ★', trend: '↑ +0.4 this month', valClass: 'amber' },
+                { label: 'Total Reviews', val: '1,280+', trend: '↑ +18% via QR', valClass: '' },
+                { label: 'Positive Sentiment', val: '94%', trend: 'Based on 1.2k ratings', valClass: 'green' },
+                { label: 'AI Response Rate', val: '99%', trend: '⚡ Auto-replied', valClass: 'teal' },
+              ].map((m, i) => (
+                <div key={i} className="lp-metric-card">
+                  <span className="lp-metric-lbl">{m.label}</span>
+                  <div className={`lp-metric-val lp-val-${m.valClass}`}>{m.val}</div>
+                  <span className="lp-metric-trend">{m.trend}</span>
                 </div>
-                <div className="ai-draft-card-mini hinglish">
-                  <span className="draft-lang-tag">Draft 2 · Hinglish</span>
-                  <p>&quot;Bohot badhiya service thi, staff bhi kaafi helpful tha!&quot;</p>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* Feature 03 */}
-            <div className="feature-card-in">
-              <div className="feature-card-top">
-                <span className="feature-icon-in">🛡️</span>
-                <span className="feature-tag-in">03 · PROTECT</span>
+            <div className="lp-dash-feed">
+              <div className="lp-dash-tabs">
+                {(['all','positive','needs-reply'] as const).map((tab, i) => (
+                  <button key={i} type="button" className={`lp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+                    {['All Reviews (1,280)', '5★ Google', 'Needs Reply (1)'][i]}
+                  </button>
+                ))}
               </div>
-              <h3 className="feature-title-in">Negative Review Filter</h3>
-              <p className="feature-desc-in">
-                Keep 1-3 star ratings in your private inbox. Resolve customer dissatisfaction privately before it impacts Google.
-              </p>
-              <div className="feature-shield-box">
-                <div className="shield-tag-row">
-                  <span className="shield-rating">★ 2.0 Rating</span>
-                  <span className="shield-status">● Diverted to Inbox</span>
-                </div>
-                <p className="shield-msg">&quot;Order wait time was a bit long on Sunday.&quot;</p>
-                <div className="shield-badge-protect">✓ Protected from Public Google Maps</div>
-              </div>
-            </div>
 
-            {/* Feature 04 */}
-            <div className="feature-card-in">
-              <div className="feature-card-top">
-                <span className="feature-icon-in">💬</span>
-                <span className="feature-tag-in">04 · RESPOND</span>
-              </div>
-              <h3 className="feature-title-in">AI Reply Assistant</h3>
-              <p className="feature-desc-in">
-                Generate thoughtful, human-sounding replies to all customer reviews in seconds. Boost SEO &amp; customer loyalty.
-              </p>
-              <div className="feature-reply-box">
-                <div className="reply-top">🤖 Instant AI Suggestion</div>
-                <p className="reply-quote">&quot;Thank you Priya! We are thrilled you enjoyed your visit. See you soon!&quot;</p>
-                <div className="reply-action-pill">⚡ 1-Click Post to Google</div>
-              </div>
-            </div>
+              <div className="lp-review-list">
+                {/* Review 1 — positive */}
+                <div className="lp-review-card">
+                  <div className="lp-review-top">
+                    <div className="lp-av lp-av-green">PS</div>
+                    <div className="lp-rv-info">
+                      <div className="lp-rv-name">Priya Sharma</div>
+                      <div className="lp-rv-meta">5.0 ★ · Google Maps · 2 hours ago</div>
+                    </div>
+                    <span className="lp-badge lp-badge-green">✓ Published to Google</span>
+                  </div>
+                  <p className="lp-rv-text">&quot;Great service and amazing experience. Staff was super polite and welcoming. Highly recommend!&quot;</p>
+                  <div className="lp-ai-reply-box">
+                    <div className="lp-air-header">
+                      <span>🤖 AI-Crafted Reply</span>
+                      <span className="lp-air-tag">Personalized</span>
+                    </div>
+                    {repliedPriya ? (
+                      <p className="lp-rv-sent">✓ Sent: &quot;{replyText}&quot;</p>
+                    ) : (
+                      <>
+                        <textarea className="lp-reply-ta" value={replyText} onChange={e => setReplyText(e.target.value)} rows={2} />
+                        <button type="button" className="lp-reply-btn" onClick={() => setRepliedPriya(true)}>Send Reply via AI →</button>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-            {/* Feature 05 */}
-            <div className="feature-card-in">
-              <div className="feature-card-top">
-                <span className="feature-icon-in">📊</span>
-                <span className="feature-tag-in">05 · INSIGHTS</span>
-              </div>
-              <h3 className="feature-title-in">Sentiment &amp; Trends</h3>
-              <p className="feature-desc-in">
-                Discover customer patterns, frequently mentioned topics, wait-time alerts, and staff highlights automatically.
-              </p>
-              <div className="feature-sentiment-box">
-                <div className="sentiment-bar-row">
-                  <span className="sentiment-label">Positive (94%)</span>
-                  <div className="sentiment-bar"><div className="sentiment-fill-green" style={{ width: '94%' }}></div></div>
-                </div>
-                <div className="sentiment-bar-row">
-                  <span className="sentiment-label">Neutral (4%)</span>
-                  <div className="sentiment-bar"><div className="sentiment-fill-yellow" style={{ width: '4%' }}></div></div>
-                </div>
-                <div className="sentiment-keywords">
-                  <span className="keyword-chip">#polite_staff</span>
-                  <span className="keyword-chip">#great_ambience</span>
-                  <span className="keyword-chip">#fast_service</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature 06 */}
-            <div className="feature-card-in">
-              <div className="feature-card-top">
-                <span className="feature-icon-in">🏢</span>
-                <span className="feature-tag-in">06 · MULTI-LOCATION</span>
-              </div>
-              <h3 className="feature-title-in">Multi-Branch Management</h3>
-              <p className="feature-desc-in">
-                Unified control across multiple outlets or franchise locations with centralized analytics and branch QR codes.
-              </p>
-              <div className="feature-branches-box">
-                <div className="branch-item">
-                  <span className="branch-name">Connaught Place</span>
-                  <span className="branch-score">4.9 ★ (420)</span>
-                </div>
-                <div className="branch-item">
-                  <span className="branch-name">Indiranagar Outlet</span>
-                  <span className="branch-score">4.8 ★ (380)</span>
-                </div>
-                <div className="branch-item">
-                  <span className="branch-name">Bandra West Hub</span>
-                  <span className="branch-score">4.8 ★ (480)</span>
+                {/* Review 2 — protected */}
+                <div className="lp-review-card lp-review-protected">
+                  <div className="lp-review-top">
+                    <div className="lp-av lp-av-amber">RM</div>
+                    <div className="lp-rv-info">
+                      <div className="lp-rv-name">Rahul Mehta</div>
+                      <div className="lp-rv-meta">2.0 ★ · Private Feedback · Yesterday</div>
+                    </div>
+                    <span className="lp-badge lp-badge-amber">🛡️ Protected</span>
+                  </div>
+                  <p className="lp-rv-text">&quot;Food was good but wait time was too long on Sunday afternoon.&quot;</p>
+                  <div className="lp-internal-note">
+                    <span>💡 Internal Alert:</span> Wait time spike detected. Manager notified. Public rating untouched at 4.8★.
+                  </div>
                 </div>
               </div>
             </div>
@@ -468,36 +434,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Comparison Section: Traditional Tools vs ReviewSpark ──────────── */}
-      <section id="comparison" className="section-in alt-bg">
-        <div className="landing-container-in">
-          <div className="section-header-in">
-            <span className="kicker-in">Why ReviewSpark</span>
-            <h2 className="title-in">Traditional tools vs. Modern AI reputation</h2>
-            <p className="desc-in">
-              See why forward-thinking businesses choose ReviewSpark over outdated manual follow-ups and fragmented software.
-            </p>
+      {/* ── Features ─────────────────────────────────────────────────────── */}
+      <section id="features" className="lp-section lp-alt">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">Platform Features</span>
+            <h2 className="lp-h2">Everything you need to dominate local search</h2>
+            <p className="lp-section-sub">Six powerful tools. One subscription. Zero headaches.</p>
           </div>
 
-          <div className="comparison-table-wrapper">
-            <table className="comparison-table">
+          <div className="lp-feat-grid">
+            {features.map((f, i) => (
+              <div key={i} className="lp-feat-card">
+                <div className="lp-feat-header">
+                  <div className="lp-feat-icon-wrap">
+                    <span className="lp-feat-icon">{f.icon}</span>
+                  </div>
+                  <span className="lp-feat-tag">{f.tag}</span>
+                </div>
+                <h3 className="lp-feat-title">{f.title}</h3>
+                <p className="lp-feat-desc">{f.desc}</p>
+                <div className="lp-feat-visual">
+                  {f.visual}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Comparison ───────────────────────────────────────────────────── */}
+      <section id="comparison" className="lp-section">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">Why ReviewSpark</span>
+            <h2 className="lp-h2">Traditional methods vs. ReviewSpark AI</h2>
+            <p className="lp-section-sub">Stop losing reviews. Start winning reputation.</p>
+          </div>
+
+          <div className="lp-comp-wrap">
+            <table className="lp-comp-table">
               <thead>
                 <tr>
-                  <th className="th-feature">Capability</th>
-                  <th className="th-old">Traditional Methods</th>
-                  <th className="th-new">ReviewSpark</th>
+                  <th className="lp-th-cap">Capability</th>
+                  <th className="lp-th-old">❌ Old Way</th>
+                  <th className="lp-th-new">✓ ReviewSpark</th>
                 </tr>
               </thead>
               <tbody>
-                {comparison.map((row, idx) => (
-                  <tr key={idx}>
-                    <td className="td-feature">{row.feature}</td>
-                    <td className="td-old">
-                      <span className="cross-icon">✕</span> {row.traditional}
-                    </td>
-                    <td className="td-new">
-                      <span className="check-icon">✓</span> {row.reviewspark}
-                    </td>
+                {comparison.map((r, i) => (
+                  <tr key={i}>
+                    <td className="lp-td-cap">{r.feature}</td>
+                    <td className="lp-td-old">{r.traditional}</td>
+                    <td className="lp-td-new">{r.reviewspark}</td>
                   </tr>
                 ))}
               </tbody>
@@ -506,126 +495,126 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Step-by-Step Flow ────────────────────────────────────────────── */}
-      <section id="how-it-works" className="section-in">
-        <div className="landing-container-in">
-          <div className="section-header-in">
-            <span className="kicker-in">How It Works</span>
-            <h2 className="title-in">From QR scan to 5-star Google review in seconds</h2>
-            <p className="desc-in">
-              Frictionless for your customers. Zero maintenance for your staff.
-            </p>
+      {/* ── How It Works ─────────────────────────────────────────────────── */}
+      <section id="how-it-works" className="lp-section lp-alt">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">How It Works</span>
+            <h2 className="lp-h2">From counter to Google in 4 steps</h2>
+            <p className="lp-section-sub">So simple, even your busiest staff member can set it up in minutes.</p>
           </div>
 
-          <div className="steps-container-in">
-            <div className="step-item-in">
-              <div className="step-num-in">01</div>
-              <h4 className="step-title-in">Scan Counter QR</h4>
-              <p className="step-desc-in">
-                Customer scans your printable stand using their default phone camera. No app download required.
-              </p>
-              <div className="step-img-box">
-                <img src="/images/phone-scan.jpg" alt="Scan QR Code" className="step-img" />
-              </div>
-            </div>
-
-            <div className="step-item-in">
-              <div className="step-num-in">02</div>
-              <h4 className="step-title-in">Rate 1 to 5 Stars</h4>
-              <p className="step-desc-in">
-                Fast tap-friendly rating interface matching Google Maps expectations with custom aspects and tags.
-              </p>
-              <div className="step-stars-preview">
-                <div className="stars-row">⭐⭐⭐⭐⭐</div>
-                <div className="stars-sub">5.0 Star Experience Rated</div>
-              </div>
-            </div>
-
-            <div className="step-item-in highlight-emerald">
-              <div className="step-num-in">03</div>
-              <h4 className="step-title-in">High Ratings get AI Drafts</h4>
-              <p className="step-desc-in">
-                4-5★ ratings receive instant AI suggestions in English &amp; Hinglish. 1-click copy &amp; continue to Google.
-              </p>
-              <div className="step-draft-preview">
-                <div className="draft-pill-row">
-                  <span className="draft-pill active">Draft 1 (English)</span>
-                  <span className="draft-pill">Draft 2 (Hinglish)</span>
-                </div>
-                <div className="draft-text-preview">&quot;Great experience, staff was super friendly!&quot;</div>
-              </div>
-            </div>
-
-            <div className="step-item-in highlight-shield">
-              <div className="step-num-in">04</div>
-              <h4 className="step-title-in">Low Ratings Stay Private</h4>
-              <p className="step-desc-in">
-                1-3★ ratings are filtered to your private dashboard inbox so you can resolve complaints without public damage.
-              </p>
-              <div className="step-shield-preview">
-                <div className="shield-header">🛡️ Private Feedback Filter</div>
-                <div className="shield-sub">Diverted from Google Maps into Owner Inbox</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Industries Grid ─────────────────────────────────────────────── */}
-      <section className="section-in alt-bg">
-        <div className="landing-container-in">
-          <div className="section-header-in">
-            <span className="kicker-in">Every Local Business</span>
-            <h2 className="title-in">Tailored for counters, tables, and clinics</h2>
-            <p className="desc-in">
-              Trusted by restaurants, healthcare clinics, wellness salons, and services across India.
-            </p>
-          </div>
-
-          <div className="industries-grid-in">
-            {industries.map((ind, idx) => (
-              <div
-                key={idx}
-                className="industry-box-in with-photo"
-                style={{
-                  backgroundImage: `linear-gradient(rgba(11, 31, 29, 0.84), rgba(7, 22, 21, 0.96)), url(${ind.image})`,
-                }}
-              >
-                <span className="industry-icon-in">{ind.icon}</span>
-                <div className="industry-title-in">{ind.name}</div>
-                <div className="industry-placement-in">{ind.placement}</div>
+          <div className="lp-steps">
+            {[
+              {
+                n: '01', title: 'Customer Scans QR',
+                desc: 'Scan the acrylic counter stand with any phone camera — no app, no login.',
+                visual: (
+                  <div className="lp-step-img-box">
+                    <img src="/images/phone-scan.jpg" alt="Scan QR" className="lp-step-img" />
+                  </div>
+                ),
+                accent: '',
+              },
+              {
+                n: '02', title: 'Tap 1 to 5 Stars',
+                desc: 'Tap-friendly Google-style rating with optional aspects and tags.',
+                visual: (
+                  <div className="lp-step-stars-box">
+                    <div className="lp-step-stars">⭐⭐⭐⭐⭐</div>
+                    <div className="lp-step-stars-sub">5.0 · 1 tap experience</div>
+                  </div>
+                ),
+                accent: '',
+              },
+              {
+                n: '03', title: 'AI Writes the Review',
+                desc: '4–5★? Instant drafts in English & Hinglish appear for them to edit and post.',
+                visual: (
+                  <div className="lp-step-draft-box">
+                    <div className="lp-step-draft-tabs">
+                      <span className="lp-step-draft-tab active">English</span>
+                      <span className="lp-step-draft-tab">Hinglish</span>
+                    </div>
+                    <p className="lp-step-draft-text">&quot;Great experience, staff was super friendly!&quot;</p>
+                    <div className="lp-step-draft-cta">Copy & Post →</div>
+                  </div>
+                ),
+                accent: 'lp-step-emerald',
+              },
+              {
+                n: '04', title: 'Low Ratings Stay Private',
+                desc: '1–3★ ratings go to your inbox — resolve them before Google ever sees them.',
+                visual: (
+                  <div className="lp-step-shield-box">
+                    <div className="lp-step-shield-icon">🛡️</div>
+                    <div className="lp-step-shield-title">Private Feedback Filter</div>
+                    <div className="lp-step-shield-sub">Diverted to Owner Inbox</div>
+                  </div>
+                ),
+                accent: 'lp-step-amber',
+              },
+            ].map((s, i) => (
+              <div key={i} className={`lp-step-card ${s.accent}`}>
+                <div className="lp-step-num">{s.n}</div>
+                <h4 className="lp-step-title">{s.title}</h4>
+                <p className="lp-step-desc">{s.desc}</p>
+                {s.visual}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── FAQ Section ─────────────────────────────────────────────────── */}
-      <section id="faq" className="section-in">
-        <div className="landing-container-in">
-          <div className="section-header-in">
-            <span className="kicker-in">Common Questions</span>
-            <h2 className="title-in">Frequently Asked Questions</h2>
-            <p className="desc-in">
-              Everything you need to know about ReviewSpark, Google compliance, and reputation management.
-            </p>
+      {/* ── Industries ───────────────────────────────────────────────────── */}
+      <section id="industries" className="lp-section">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">Every Local Business</span>
+            <h2 className="lp-h2">Built for Indian local businesses</h2>
+            <p className="lp-section-sub">From restaurant tables to clinic counters — ReviewSpark works wherever customers pay.</p>
           </div>
 
-          <div className="faq-container-in">
-            {faqs.map((faq, index) => {
-              const isOpen = openFaq === index;
+          <div className="lp-ind-grid">
+            {industries.map((ind, i) => (
+              <div
+                key={i}
+                className="lp-ind-card"
+                style={{
+                  backgroundImage: `linear-gradient(160deg, rgba(9, 28, 26, 0.72) 0%, rgba(7, 22, 21, 0.92) 100%), url(${ind.image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              >
+                <span className="lp-ind-icon">{ind.icon}</span>
+                <div className="lp-ind-name">{ind.name}</div>
+                <div className="lp-ind-placement">{ind.placement}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+      <section id="faq" className="lp-section lp-alt">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">FAQ</span>
+            <h2 className="lp-h2">Frequently asked questions</h2>
+            <p className="lp-section-sub">Everything you need to know about ReviewSpark and Google compliance.</p>
+          </div>
+
+          <div className="lp-faq-wrap">
+            {faqs.map((faq, i) => {
+              const open = openFaq === i;
               return (
-                <div key={index} className={`faq-card-in ${isOpen ? 'open' : ''}`}>
-                  <button
-                    type="button"
-                    className="faq-trigger-in"
-                    onClick={() => setOpenFaq(isOpen ? null : index)}
-                  >
-                    <span className="faq-idx-in">0{index + 1}</span>
-                    <span className="faq-q-text-in">{faq.q}</span>
-                    <span className="faq-toggle-icon">{isOpen ? '−' : '+'}</span>
+                <div key={i} className={`lp-faq-item ${open ? 'open' : ''}`}>
+                  <button type="button" className="lp-faq-q" onClick={() => setOpenFaq(open ? null : i)}>
+                    <span className="lp-faq-num">0{i + 1}</span>
+                    <span className="lp-faq-qtext">{faq.q}</span>
+                    <span className="lp-faq-icon">{open ? '−' : '+'}</span>
                   </button>
-                  {isOpen && <div className="faq-body-in">{faq.a}</div>}
+                  {open && <div className="lp-faq-a">{faq.a}</div>}
                 </div>
               );
             })}
@@ -633,52 +622,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Bottom Call To Action Banner ─────────────────────────────────── */}
-      <section className="bottom-banner-in">
-        <div className="landing-container-in bottom-banner-content-in">
-          <h2 className="bottom-banner-title-in">
-            Put one QR on the counter.<br />
-            <span className="gradient-text-emerald">Google reviews follow.</span>
+      {/* ── Bottom CTA ───────────────────────────────────────────────────── */}
+      <section className="lp-cta-section">
+        <div className="lp-cta-glow"></div>
+        <div className="lp-container lp-cta-inner">
+          <div className="lp-cta-badge">🚀 Start free today — no credit card needed</div>
+          <h2 className="lp-cta-h2">
+            One QR on your counter.<br />
+            <span className="lp-grad">Google reviews on autopilot.</span>
           </h2>
-          <p className="bottom-banner-desc-in">
-            Start automating customer reviews, protecting your rating, and growing your local search presence today.
+          <p className="lp-cta-sub">
+            Join 2,400+ Indian businesses already growing their reputation with ReviewSpark.
           </p>
-          <div className="bottom-banner-actions">
-            <Link href="/login" className="btn-hero-primary-in">
-              Get Started with ReviewSpark
+          <div className="lp-cta-btns">
+            <Link href="/login" className="lp-btn-primary lp-btn-lg lp-btn-xl">
+              Get Started Free →
             </Link>
+            <a href="#how-it-works" className="lp-btn-outline lp-btn-lg">
+              Watch How It Works
+            </a>
           </div>
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="footer-in">
-        <div className="landing-container-in footer-inner-in">
-          <div className="footer-brand-in">
-            <Link href="/" className="landing-logo-in">
-              <span className="logo-spark-icon-in">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#10b981">
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <footer className="lp-footer">
+        <div className="lp-container lp-footer-inner">
+          <div className="lp-footer-brand">
+            <Link href="/" className="lp-logo" style={{ fontSize: '1.2rem' }}>
+              <span className="lp-logo-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#10b981">
                   <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
                 </svg>
               </span>
-              <span className="logo-text-in">Review<span className="logo-accent-in">Spark</span></span>
+              Review<span className="lp-logo-spark">Spark</span>
             </Link>
-            <p className="footer-tagline-in">
-              AI-Powered Reputation and Customer Review Management Platform.
-            </p>
+            <p className="lp-footer-tagline">AI-Powered Review & Reputation Platform for Indian Businesses.</p>
           </div>
 
-          <div className="footer-nav-in">
-            <a href="#overview">Overview</a>
-            <a href="#features">Features</a>
-            <a href="#comparison">Why Us</a>
-            <a href="#how-it-works">How It Works</a>
-            <a href="#faq">FAQ</a>
+          <nav className="lp-footer-nav">
+            {[
+              ['#overview','Overview'],
+              ['#features','Features'],
+              ['#comparison','Why Us'],
+              ['#how-it-works','How It Works'],
+              ['#faq','FAQ'],
+            ].map(([href, label]) => (
+              <a key={href} href={href}>{label}</a>
+            ))}
             <Link href="/login">Dashboard</Link>
-          </div>
+          </nav>
 
-          <div className="footer-copyright-in">
-            <p>© {new Date().getFullYear()} ReviewSpark. All rights reserved.</p>
+          <div className="lp-footer-copy">
+            <p>© {new Date().getFullYear()} ReviewSpark · All rights reserved · Built for India 🇮🇳</p>
           </div>
         </div>
       </footer>
