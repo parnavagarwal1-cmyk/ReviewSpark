@@ -41,45 +41,6 @@ export default function LandingPage() {
     },
   ];
 
-  const features = [
-    {
-      tag: '01 · COLLECT',
-      title: 'Get More Reviews',
-      desc: 'One printable QR code for your counter, table, or billing desk. Customers scan and leave reviews in 10 seconds without downloading any app.',
-      icon: '📱',
-    },
-    {
-      tag: '02 · GENERATE',
-      title: 'Smart AI Review Drafts',
-      desc: 'Dual-language review generator providing customers authentic drafts in both English and conversational Hinglish so they never stare at a blank box.',
-      icon: '✍️',
-    },
-    {
-      tag: '03 · PROTECT',
-      title: 'Negative Review Filter',
-      desc: 'Keep 1-3 star ratings in your private inbox. Resolve customer dissatisfaction privately before it impacts your public Google rating.',
-      icon: '🛡️',
-    },
-    {
-      tag: '04 · RESPOND',
-      title: 'AI Reply Assistant',
-      desc: 'Generate thoughtful, human-sounding replies to all customer reviews in seconds. Boost engagement and search ranking with zero effort.',
-      icon: '💬',
-    },
-    {
-      tag: '05 · INSIGHTS',
-      title: 'Sentiment & Trends',
-      desc: 'Discover customer patterns, frequently mentioned topics, wait-time mentions, and staff highlights to make smarter business decisions.',
-      icon: '📊',
-    },
-    {
-      tag: '06 · MULTI-LOCATION',
-      title: 'Multi-Branch Management',
-      desc: 'Unified control across multiple outlets or franchise locations with centralized analytics, branch-specific QR codes, and performance comparisons.',
-      icon: '🏢',
-    },
-  ];
-
   const comparison = [
     {
       feature: 'Review Collection',
@@ -109,14 +70,14 @@ export default function LandingPage() {
   ];
 
   const industries = [
-    { name: 'Restaurants & Cafés', icon: '🍽️', placement: 'QR on tables & bill folders' },
-    { name: 'Salons & Spas', icon: '💇', placement: 'QR at mirrors & reception' },
-    { name: 'Dental & Medical Clinics', icon: '🩺', placement: 'QR at checkout & consultation' },
-    { name: 'Gyms & Fitness Centers', icon: '🏋️', placement: 'QR at check-in desk' },
-    { name: 'Coaching & Institutes', icon: '📚', placement: 'QR at reception & classrooms' },
-    { name: 'Hotels & Resorts', icon: '🏨', placement: 'QR at front desk & rooms' },
-    { name: 'Car & Bike Service', icon: '🚗', placement: 'QR on customer invoice & billing' },
-    { name: 'Retail & Boutiques', icon: '🛍️', placement: 'QR at billing checkout' },
+    { name: 'Restaurants & Cafés', icon: '🍽️', placement: 'QR on tables & bill folders', image: '/images/restaurant-table.jpg' },
+    { name: 'Salons & Spas', icon: '💇', placement: 'QR at mirrors & reception', image: '/images/salon-reception.jpg' },
+    { name: 'Dental & Medical Clinics', icon: '🩺', placement: 'QR at checkout & consultation', image: '/images/clinic-desk.jpg' },
+    { name: 'Gyms & Fitness Centers', icon: '🏋️', placement: 'QR at check-in desk', image: '/images/gym-desk.jpg' },
+    { name: 'Coaching & Institutes', icon: '📚', placement: 'QR at reception & classrooms', image: '/images/phone-scan.jpg' },
+    { name: 'Hotels & Resorts', icon: '🏨', placement: 'QR at front desk & rooms', image: '/images/salon-reception.jpg' },
+    { name: 'Car & Bike Service', icon: '🚗', placement: 'QR on customer invoice & billing', image: '/images/phone-scan.jpg' },
+    { name: 'Retail & Boutiques', icon: '🛍️', placement: 'QR at billing checkout', image: '/images/retail-store.jpg' },
   ];
 
   return (
@@ -209,12 +170,23 @@ export default function LandingPage() {
             </a>
           </div>
 
-          {/* Blank Placeholder Image Slot for Hero Graphic / Mockup */}
-          <div className="placeholder-hero-image-container">
-            <div className="placeholder-box hero-placeholder">
-              <div className="placeholder-icon">🖼️</div>
-              <div className="placeholder-title">Hero Graphic / Stand Image Placeholder</div>
-              <div className="placeholder-sub">Drop your custom QR stand or hero illustration here</div>
+          {/* Hero Stand Showcase Photo */}
+          <div className="hero-stand-showcase-container">
+            <div className="hero-stand-card">
+              <div className="hero-stand-img-wrap">
+                <img
+                  src="/images/qr-stand-420.webp"
+                  alt="ReviewSpark Smart Acrylic QR Stand"
+                  className="hero-stand-img"
+                  width={340}
+                  height={340}
+                />
+              </div>
+              <div className="hero-stand-badge-row">
+                <span className="stand-pill">✨ Premium Acrylic Stand</span>
+                <span className="stand-badge-qr">Smart QR &amp; Tap to Review</span>
+                <span className="stand-badge-rating">⭐⭐⭐⭐⭐ 4.9 Verified</span>
+              </div>
             </div>
           </div>
 
@@ -365,20 +337,133 @@ export default function LandingPage() {
           </div>
 
           <div className="features-grid-in">
-            {features.map((feat, idx) => (
-              <div key={idx} className="feature-card-in">
-                <div className="feature-card-top">
-                  <span className="feature-icon-in">{feat.icon}</span>
-                  <span className="feature-tag-in">{feat.tag}</span>
+            {/* Feature 01 */}
+            <div className="feature-card-in">
+              <div className="feature-card-top">
+                <span className="feature-icon-in">📱</span>
+                <span className="feature-tag-in">01 · COLLECT</span>
+              </div>
+              <h3 className="feature-title-in">Get More Reviews</h3>
+              <p className="feature-desc-in">
+                One printable QR stand for your counter, table, or billing desk. Customers scan and leave reviews in 10 seconds.
+              </p>
+              <div className="feature-visual-img-wrap">
+                <img src="/images/phone-scan.jpg" alt="Collect Reviews QR" className="feature-visual-img" />
+                <span className="feature-visual-overlay-badge">⚡ 10-Second QR Scan</span>
+              </div>
+            </div>
+
+            {/* Feature 02 */}
+            <div className="feature-card-in">
+              <div className="feature-card-top">
+                <span className="feature-icon-in">✍️</span>
+                <span className="feature-tag-in">02 · GENERATE</span>
+              </div>
+              <h3 className="feature-title-in">Smart AI Review Drafts</h3>
+              <p className="feature-desc-in">
+                Dual-language review generator providing customers authentic drafts in both English and conversational Hinglish.
+              </p>
+              <div className="feature-ai-draft-box">
+                <div className="ai-draft-card-mini">
+                  <span className="draft-lang-tag">Draft 1 · English</span>
+                  <p>&quot;Superb service and welcoming team. Highly recommended!&quot;</p>
                 </div>
-                <h3 className="feature-title-in">{feat.title}</h3>
-                <p className="feature-desc-in">{feat.desc}</p>
-                {/* Blank Placeholder Image Slot for Feature Graphic */}
-                <div className="placeholder-box feature-placeholder">
-                  <div className="placeholder-sub">Feature Graphic Placeholder</div>
+                <div className="ai-draft-card-mini hinglish">
+                  <span className="draft-lang-tag">Draft 2 · Hinglish</span>
+                  <p>&quot;Bohot badhiya service thi, staff bhi kaafi helpful tha!&quot;</p>
                 </div>
               </div>
-            ))}
+            </div>
+
+            {/* Feature 03 */}
+            <div className="feature-card-in">
+              <div className="feature-card-top">
+                <span className="feature-icon-in">🛡️</span>
+                <span className="feature-tag-in">03 · PROTECT</span>
+              </div>
+              <h3 className="feature-title-in">Negative Review Filter</h3>
+              <p className="feature-desc-in">
+                Keep 1-3 star ratings in your private inbox. Resolve customer dissatisfaction privately before it impacts Google.
+              </p>
+              <div className="feature-shield-box">
+                <div className="shield-tag-row">
+                  <span className="shield-rating">★ 2.0 Rating</span>
+                  <span className="shield-status">● Diverted to Inbox</span>
+                </div>
+                <p className="shield-msg">&quot;Order wait time was a bit long on Sunday.&quot;</p>
+                <div className="shield-badge-protect">✓ Protected from Public Google Maps</div>
+              </div>
+            </div>
+
+            {/* Feature 04 */}
+            <div className="feature-card-in">
+              <div className="feature-card-top">
+                <span className="feature-icon-in">💬</span>
+                <span className="feature-tag-in">04 · RESPOND</span>
+              </div>
+              <h3 className="feature-title-in">AI Reply Assistant</h3>
+              <p className="feature-desc-in">
+                Generate thoughtful, human-sounding replies to all customer reviews in seconds. Boost SEO &amp; customer loyalty.
+              </p>
+              <div className="feature-reply-box">
+                <div className="reply-top">🤖 Instant AI Suggestion</div>
+                <p className="reply-quote">&quot;Thank you Priya! We are thrilled you enjoyed your visit. See you soon!&quot;</p>
+                <div className="reply-action-pill">⚡ 1-Click Post to Google</div>
+              </div>
+            </div>
+
+            {/* Feature 05 */}
+            <div className="feature-card-in">
+              <div className="feature-card-top">
+                <span className="feature-icon-in">📊</span>
+                <span className="feature-tag-in">05 · INSIGHTS</span>
+              </div>
+              <h3 className="feature-title-in">Sentiment &amp; Trends</h3>
+              <p className="feature-desc-in">
+                Discover customer patterns, frequently mentioned topics, wait-time alerts, and staff highlights automatically.
+              </p>
+              <div className="feature-sentiment-box">
+                <div className="sentiment-bar-row">
+                  <span className="sentiment-label">Positive (94%)</span>
+                  <div className="sentiment-bar"><div className="sentiment-fill-green" style={{ width: '94%' }}></div></div>
+                </div>
+                <div className="sentiment-bar-row">
+                  <span className="sentiment-label">Neutral (4%)</span>
+                  <div className="sentiment-bar"><div className="sentiment-fill-yellow" style={{ width: '4%' }}></div></div>
+                </div>
+                <div className="sentiment-keywords">
+                  <span className="keyword-chip">#polite_staff</span>
+                  <span className="keyword-chip">#great_ambience</span>
+                  <span className="keyword-chip">#fast_service</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature 06 */}
+            <div className="feature-card-in">
+              <div className="feature-card-top">
+                <span className="feature-icon-in">🏢</span>
+                <span className="feature-tag-in">06 · MULTI-LOCATION</span>
+              </div>
+              <h3 className="feature-title-in">Multi-Branch Management</h3>
+              <p className="feature-desc-in">
+                Unified control across multiple outlets or franchise locations with centralized analytics and branch QR codes.
+              </p>
+              <div className="feature-branches-box">
+                <div className="branch-item">
+                  <span className="branch-name">Connaught Place</span>
+                  <span className="branch-score">4.9 ★ (420)</span>
+                </div>
+                <div className="branch-item">
+                  <span className="branch-name">Indiranagar Outlet</span>
+                  <span className="branch-score">4.8 ★ (380)</span>
+                </div>
+                <div className="branch-item">
+                  <span className="branch-name">Bandra West Hub</span>
+                  <span className="branch-score">4.8 ★ (480)</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -439,8 +524,8 @@ export default function LandingPage() {
               <p className="step-desc-in">
                 Customer scans your printable stand using their default phone camera. No app download required.
               </p>
-              <div className="placeholder-box step-placeholder">
-                <div className="placeholder-sub">QR Scan Graphic Placeholder</div>
+              <div className="step-img-box">
+                <img src="/images/phone-scan.jpg" alt="Scan QR Code" className="step-img" />
               </div>
             </div>
 
@@ -450,8 +535,9 @@ export default function LandingPage() {
               <p className="step-desc-in">
                 Fast tap-friendly rating interface matching Google Maps expectations with custom aspects and tags.
               </p>
-              <div className="placeholder-box step-placeholder">
-                <div className="placeholder-sub">Star Rating Graphic Placeholder</div>
+              <div className="step-stars-preview">
+                <div className="stars-row">⭐⭐⭐⭐⭐</div>
+                <div className="stars-sub">5.0 Star Experience Rated</div>
               </div>
             </div>
 
@@ -461,8 +547,12 @@ export default function LandingPage() {
               <p className="step-desc-in">
                 4-5★ ratings receive instant AI suggestions in English &amp; Hinglish. 1-click copy &amp; continue to Google.
               </p>
-              <div className="placeholder-box step-placeholder">
-                <div className="placeholder-sub">AI Drafts Graphic Placeholder</div>
+              <div className="step-draft-preview">
+                <div className="draft-pill-row">
+                  <span className="draft-pill active">Draft 1 (English)</span>
+                  <span className="draft-pill">Draft 2 (Hinglish)</span>
+                </div>
+                <div className="draft-text-preview">&quot;Great experience, staff was super friendly!&quot;</div>
               </div>
             </div>
 
@@ -472,8 +562,9 @@ export default function LandingPage() {
               <p className="step-desc-in">
                 1-3★ ratings are filtered to your private dashboard inbox so you can resolve complaints without public damage.
               </p>
-              <div className="placeholder-box step-placeholder">
-                <div className="placeholder-sub">Private Shield Graphic Placeholder</div>
+              <div className="step-shield-preview">
+                <div className="shield-header">🛡️ Private Feedback Filter</div>
+                <div className="shield-sub">Diverted from Google Maps into Owner Inbox</div>
               </div>
             </div>
           </div>
@@ -493,7 +584,13 @@ export default function LandingPage() {
 
           <div className="industries-grid-in">
             {industries.map((ind, idx) => (
-              <div key={idx} className="industry-box-in">
+              <div
+                key={idx}
+                className="industry-box-in with-photo"
+                style={{
+                  backgroundImage: `linear-gradient(rgba(11, 31, 29, 0.84), rgba(7, 22, 21, 0.96)), url(${ind.image})`,
+                }}
+              >
                 <span className="industry-icon-in">{ind.icon}</span>
                 <div className="industry-title-in">{ind.name}</div>
                 <div className="industry-placement-in">{ind.placement}</div>
