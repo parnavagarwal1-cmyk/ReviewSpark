@@ -212,6 +212,7 @@ export default function LandingPage() {
             <a href="#comparison">Why Us</a>
             <a href="#how-it-works">How It Works</a>
             <a href="#industries">Industries</a>
+            <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
           </nav>
 
@@ -230,9 +231,9 @@ export default function LandingPage() {
         </div>
         {mobileMenuOpen && (
           <div className="lp-mobile-drawer">
-            {['#features','#comparison','#how-it-works','#industries','#faq'].map((href, i) => (
+            {['#features','#comparison','#how-it-works','#industries','#pricing','#faq'].map((href, i) => (
               <a key={i} href={href} onClick={() => setMobileMenuOpen(false)}>
-                {['Features','Why Us','How It Works','Industries','FAQ'][i]}
+                {['Features','Why Us','How It Works','Industries','Pricing','FAQ'][i]}
               </a>
             ))}
             <div className="lp-mobile-btns">
@@ -595,6 +596,92 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pricing ───────────────────────────────────────────────────────── */}
+      <section id="pricing" className="lp-section">
+        <div className="lp-container">
+          <div className="lp-section-head">
+            <span className="lp-kicker">Simple Pricing</span>
+            <h2 className="lp-h2">One plan. Everything included.</h2>
+            <p className="lp-section-sub">No hidden charges. No complicated tiers. Just one honest price to get started.</p>
+          </div>
+
+          <div className="lp-pricing-layout">
+
+            {/* ── Main Plan Card ── */}
+            <div className="lp-price-card lp-price-main">
+              <div className="lp-price-top-badge">🔥 Most Popular · Best Value</div>
+
+              <div className="lp-price-header">
+                <div className="lp-price-name">Starter Kit</div>
+                <p className="lp-price-tagline">Everything you need to start collecting 5-star Google reviews.</p>
+              </div>
+
+              <div className="lp-price-amount-block">
+                <div className="lp-price-one-time">
+                  <span className="lp-price-currency">₹</span>
+                  <span className="lp-price-num">1,000</span>
+                  <span className="lp-price-freq">one-time setup</span>
+                </div>
+                <div className="lp-price-then">
+                  then <strong>₹149 / month</strong> after 12 months
+                </div>
+              </div>
+
+              <ul className="lp-price-includes">
+                <li><span className="lp-pi-icon">✓</span><span>Premium Acrylic QR Counter Stand</span></li>
+                <li><span className="lp-pi-icon">✓</span><span>Unique QR Code for your business</span></li>
+                <li><span className="lp-pi-icon">✓</span><span className="lp-pi-highlight">12 Months FREE Platform Access</span></li>
+                <li><span className="lp-pi-icon">✓</span><span>AI Review Drafts in English & Hinglish</span></li>
+                <li><span className="lp-pi-icon">✓</span><span>Negative Review Shield (private inbox)</span></li>
+                <li><span className="lp-pi-icon">✓</span><span>AI Reply Assistant</span></li>
+                <li><span className="lp-pi-icon">✓</span><span>Sentiment Analytics Dashboard</span></li>
+                <li><span className="lp-pi-icon">✓</span><span>Multi-location support</span></li>
+              </ul>
+
+              <div className="lp-price-renewal-note">
+                <span>📅</span>
+                After your free year, continue at just <strong>₹149/month</strong> — cancel anytime.
+              </div>
+
+              <a href="/login" className="lp-btn-primary lp-btn-lg lp-price-cta">
+                Get Started for ₹1,000 →
+              </a>
+            </div>
+
+            {/* ── NFC Add-on Card ── */}
+            <div className="lp-price-card lp-price-addon">
+              <div className="lp-addon-icon">📲</div>
+              <div className="lp-addon-name">NFC Tap Add-on</div>
+              <div className="lp-addon-price">
+                <span className="lp-addon-currency">+₹</span>
+                <span className="lp-addon-num">500</span>
+                <span className="lp-addon-freq">one-time</span>
+              </div>
+              <p className="lp-addon-desc">
+                Upgrade your stand with an embedded NFC chip. Customers can <strong>tap</strong> their phone directly on the stand to leave a review — no camera scan needed.
+              </p>
+              <ul className="lp-addon-list">
+                <li>✓ Works on all NFC-enabled Android & iPhone</li>
+                <li>✓ Tap-to-review in under 3 seconds</li>
+                <li>✓ Embedded in the same premium acrylic stand</li>
+                <li>✓ No separate device or app required</li>
+              </ul>
+              <div className="lp-addon-total">
+                Total with NFC: <strong>₹1,500</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Trust Strip ── */}
+          <div className="lp-price-trust">
+            <div className="lp-price-trust-item"><span>🔒</span> 100% Google Compliant</div>
+            <div className="lp-price-trust-item"><span>🚀</span> Setup in 24 hours</div>
+            <div className="lp-price-trust-item"><span>🤝</span> No lock-in contract</div>
+            <div className="lp-price-trust-item"><span>⭐</span> 4.9/5 avg rating lift</div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
       <section id="faq" className="lp-section lp-alt">
         <div className="lp-container">
@@ -666,6 +753,7 @@ export default function LandingPage() {
               ['#features','Features'],
               ['#comparison','Why Us'],
               ['#how-it-works','How It Works'],
+              ['#pricing','Pricing'],
               ['#faq','FAQ'],
             ].map(([href, label]) => (
               <a key={href} href={href}>{label}</a>

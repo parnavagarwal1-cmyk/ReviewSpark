@@ -2626,6 +2626,246 @@ tbody td {
 }
 
 /* =========================================================================== */
+/* ── PRICING ─────────────────────────────────────────────────────────────────  */
+/* =========================================================================== */
+.lp-pricing-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 1.75rem;
+  align-items: start;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Main Plan Card */
+.lp-price-card {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  position: relative;
+}
+.lp-price-main {
+  background: linear-gradient(160deg, rgba(16,185,129,0.1) 0%, rgba(9,28,26,0.85) 100%);
+  border: 1.5px solid rgba(16,185,129,0.4);
+  padding: 2.25rem;
+  box-shadow: 0 0 60px rgba(16,185,129,0.12), 0 20px 50px rgba(0,0,0,0.45);
+}
+.lp-price-top-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  color: #041210;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.3rem 0.9rem;
+  border-radius: var(--r-full);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.lp-price-header { margin-bottom: 1.5rem; }
+.lp-price-name {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--c-white);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.3rem;
+}
+.lp-price-tagline {
+  color: var(--c-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.lp-price-amount-block {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.75rem;
+}
+.lp-price-one-time {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin-bottom: 0.45rem;
+}
+.lp-price-currency {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--c-em-light);
+  line-height: 1;
+}
+.lp-price-num {
+  font-size: 3.8rem;
+  font-weight: 900;
+  color: var(--c-white);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.lp-price-freq {
+  font-size: 0.85rem;
+  color: var(--c-muted);
+  font-weight: 500;
+  margin-left: 0.25rem;
+  align-self: flex-end;
+  padding-bottom: 0.35rem;
+}
+.lp-price-then {
+  font-size: 0.88rem;
+  color: var(--c-dim);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 0.55rem;
+}
+.lp-price-then strong { color: var(--c-muted); }
+
+.lp-price-includes {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.lp-price-includes li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  font-size: 0.9rem;
+  color: var(--c-muted);
+  line-height: 1.4;
+}
+.lp-pi-icon {
+  color: var(--c-em);
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+.lp-pi-highlight {
+  color: var(--c-em-light);
+  font-weight: 700;
+}
+
+.lp-price-renewal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(245,158,11,0.07);
+  border: 1px solid rgba(245,158,11,0.2);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: #b8965a;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+.lp-price-renewal-note strong { color: #d4a853; }
+
+.lp-price-cta {
+  display: block;
+  text-align: center;
+  width: 100%;
+  font-size: 1.05rem;
+}
+
+/* NFC Add-on Card */
+.lp-price-addon {
+  background: rgba(10,22,21,0.9);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 2rem 1.75rem;
+}
+.lp-addon-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.75rem;
+}
+.lp-addon-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--c-white);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.6rem;
+}
+.lp-addon-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  margin-bottom: 1rem;
+}
+.lp-addon-currency {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--c-em-light);
+}
+.lp-addon-num {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--c-white);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.lp-addon-freq {
+  font-size: 0.8rem;
+  color: var(--c-muted);
+  margin-left: 0.2rem;
+  padding-bottom: 0.25rem;
+  align-self: flex-end;
+}
+.lp-addon-desc {
+  font-size: 0.87rem;
+  color: var(--c-muted);
+  line-height: 1.6;
+  margin-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding-bottom: 1rem;
+}
+.lp-addon-desc strong { color: var(--c-em-light); }
+.lp-addon-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.lp-addon-list li {
+  font-size: 0.84rem;
+  color: var(--c-muted);
+}
+.lp-addon-list li::before { content: ''; }
+.lp-addon-total {
+  background: rgba(16,185,129,0.08);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  color: var(--c-muted);
+  text-align: center;
+}
+.lp-addon-total strong {
+  color: var(--c-em-light);
+  font-size: 1.05rem;
+}
+
+/* Trust Strip */
+.lp-price-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.lp-price-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--c-muted);
+  font-weight: 600;
+}
+.lp-price-trust-item span { font-size: 1rem; }
+
+/* =========================================================================== */
 /* ── RESPONSIVE ──────────────────────────────────────────────────────────────  */
 /* =========================================================================== */
 @media (max-width: 1024px) {
@@ -2643,6 +2883,7 @@ tbody td {
   .lp-float-top-left  { left: 0; top: -10px; }
   .lp-float-top-right { right: 0; top: -10px; }
   .lp-cta-h2 { font-size: 2.4rem; }
+  .lp-pricing-layout { grid-template-columns: 1fr; max-width: 560px; }
 }
 
 @media (max-width: 768px) {
@@ -2669,4 +2910,8 @@ tbody td {
   .lp-hero-h1      { font-size: 2rem; }
   .lp-hero-cta-row { flex-direction: column; }
   .lp-cta-h2       { font-size: 1.7rem; }
+  .lp-pricing-layout { grid-template-columns: 1fr; }
+  .lp-price-trust  { gap: 1.25rem; }
+  .lp-price-num    { font-size: 3rem; }
+  .lp-addon-num    { font-size: 2.2rem; }
 }
