@@ -7,57 +7,104 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Interactive Hero Demo State
-  const [demoRating, setDemoRating] = useState(5);
-  const [demoSelectedDraft, setDemoSelectedDraft] = useState<0 | 1>(0);
-  const [demoCopied, setDemoCopied] = useState(false);
-
-  const demoDrafts = [
-    {
-      lang: 'English',
-      badge: '🇬🇧 English',
-      text: 'Visited today for service. The team was prompt, highly professional, and hygiene was top notch. Will definitely visit again!',
-    },
-    {
-      lang: 'Hinglish',
-      badge: '🇮🇳 Hinglish',
-      text: 'Bohot hi badhiya experience tha! Staff super polite hai aur bilkul wait nahi karna pada. 5-star service 👍',
-    },
-  ];
-
-  function handleDemoCopy() {
-    setDemoCopied(true);
-    setTimeout(() => setDemoCopied(false), 2000);
-  }
+  // Interactive Live Dashboard Demo State
+  const [activeTab, setActiveTab] = useState<'all' | 'positive' | 'needs-reply'>('all');
+  const [repliedPriya, setRepliedPriya] = useState(false);
+  const [replyText, setReplyText] = useState(
+    'Thank you Priya! We are thrilled you had such a wonderful visit. Looking forward to welcoming you back soon!'
+  );
 
   const faqs = [
     {
-      q: 'What are Google Business AI reviews?',
-      a: 'Google Business AI reviews are genuine Google Maps reviews where happy customers get an AI-drafted suggestion in English or Hinglish that they can easily edit before posting to your Google Business Profile. ReviewSpark never auto-posts or generates fake reviews — customers scan your QR, rate their visit, and submit the review themselves.',
+      q: 'What is ReviewSpark and how does it help my business?',
+      a: 'ReviewSpark is an all-in-one customer review and reputation management platform. It gives your business a single counter QR code, automatically generates AI-drafted reviews in English & Hinglish for happy customers, and protects your public rating by routing low ratings into your private inbox.',
     },
     {
-      q: 'Do customers need to download an app to leave a review?',
-      a: 'No app is required! When a customer scans your QR code using their default phone camera, it instantly opens in their mobile browser (Chrome, Safari, etc.) within seconds.',
+      q: 'Do customers need to download an application to review?',
+      a: 'No app is required! When customers scan the QR code using their default phone camera, it instantly opens in their browser (Chrome, Safari, etc.) without any login or download friction.',
     },
     {
-      q: 'How does the AI review generator work?',
-      a: 'When a customer gives a 4 or 5-star rating, ReviewSpark dynamically generates two authentic review options: Draft 1 in clean English and Draft 2 in conversational Hinglish. The customer can tap either draft, edit it if they want, and copy it directly to Google Maps in 1 click.',
+      q: 'How do the AI-assisted review suggestions work?',
+      a: 'When a customer gives a 4 or 5-star rating, ReviewSpark dynamically drafts two personalized review options: Draft 1 in natural English and Draft 2 in conversational Hinglish. Customers can edit any word and post directly to Google Maps in 1 click.',
     },
     {
-      q: 'How does the negative review filter (private feedback) work?',
-      a: 'If a customer had a less-than-ideal experience and rates 1 to 3 stars, they are gently guided to an internal private feedback form. Their concerns go straight to your private dashboard inbox, allowing you to resolve the problem privately before it turns into a damaging public 1-star review on Google.',
+      q: 'How does the negative review protection work?',
+      a: 'If a customer has a less-than-ideal experience (1 to 3 stars), the system diverts their feedback to your private internal inbox. This allows your team to address and resolve the customer complaint directly before it ever appears publicly on Google Maps.',
     },
     {
       q: 'Is ReviewSpark compliant with Google policies?',
-      a: 'Yes, 100%. ReviewSpark never offers gifts or discounts for reviews, never auto-posts on behalf of users, and never posts bot-generated content. Real customers write, edit, and post the reviews themselves from their personal Google accounts.',
+      a: 'Yes, 100%. ReviewSpark strictly adheres to Google guidelines. It never buys, fakes, or auto-posts reviews. Real customers write, edit, and post authentic reviews from their own Google accounts.',
     },
     {
-      q: 'How do I get my ready-to-print QR stand?',
-      a: 'Simply contact us at parnavagarwal1@gmail.com with your business details and Google Maps listing. We will set up everything for you and send you your ready-to-print QR code stand in high resolution.',
+      q: 'Can I manage multiple locations or branches?',
+      a: 'Yes! ReviewSpark provides multi-location support. You can track reviews, manage separate QR codes, compare ratings, and monitor reputation performance across all your branches from one unified dashboard.',
+    },
+  ];
+
+  const features = [
+    {
+      tag: '01 · COLLECT',
+      title: 'Get More Reviews',
+      desc: 'One printable QR code for your counter, table, or billing desk. Customers scan and leave reviews in 10 seconds without downloading any app.',
+      icon: '📱',
     },
     {
-      q: 'Can I use ReviewSpark for multiple branches or locations?',
-      a: 'Yes! ReviewSpark supports multi-location businesses. You can manage separate QR codes, track reviews, and monitor analytics for all your branches from a single unified dashboard.',
+      tag: '02 · GENERATE',
+      title: 'Smart AI Review Drafts',
+      desc: 'Dual-language review generator providing customers authentic drafts in both English and conversational Hinglish so they never stare at a blank box.',
+      icon: '✍️',
+    },
+    {
+      tag: '03 · PROTECT',
+      title: 'Negative Review Filter',
+      desc: 'Keep 1-3 star ratings in your private inbox. Resolve customer dissatisfaction privately before it impacts your public Google rating.',
+      icon: '🛡️',
+    },
+    {
+      tag: '04 · RESPOND',
+      title: 'AI Reply Assistant',
+      desc: 'Generate thoughtful, human-sounding replies to all customer reviews in seconds. Boost engagement and search ranking with zero effort.',
+      icon: '💬',
+    },
+    {
+      tag: '05 · INSIGHTS',
+      title: 'Sentiment & Trends',
+      desc: 'Discover customer patterns, frequently mentioned topics, wait-time mentions, and staff highlights to make smarter business decisions.',
+      icon: '📊',
+    },
+    {
+      tag: '06 · MULTI-LOCATION',
+      title: 'Multi-Branch Management',
+      desc: 'Unified control across multiple outlets or franchise locations with centralized analytics, branch-specific QR codes, and performance comparisons.',
+      icon: '🏢',
+    },
+  ];
+
+  const comparison = [
+    {
+      feature: 'Review Collection',
+      traditional: 'Manual verbal requests, forgotten by customers',
+      reviewspark: 'Frictionless QR scan directly at checkout or tables',
+    },
+    {
+      feature: 'Customer Review Writing',
+      traditional: 'Customers struggle with what to write and leave',
+      reviewspark: 'AI drafts in English & Hinglish they can edit and post',
+    },
+    {
+      feature: 'Negative Feedback',
+      traditional: 'Disgruntled customers post directly to Google',
+      reviewspark: '1–3★ feedback is intercepted in your private inbox',
+    },
+    {
+      feature: 'Review Responses',
+      traditional: 'Time-consuming manual typing or ignored',
+      reviewspark: 'One-click contextual AI replies that sound human',
+    },
+    {
+      feature: 'Customer Sentiment',
+      traditional: 'Guesswork with no clear trend analysis',
+      reviewspark: 'Automated topic, emotion, and wait-time insights',
     },
   ];
 
@@ -73,38 +120,39 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="landing-root">
-      {/* ── Navbar ──────────────────────────────────────────────────────── */}
-      <header className="landing-header">
-        <div className="landing-container header-inner">
-          <Link href="/" className="landing-logo">
-            <span className="logo-spark-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#6366f1">
+    <div className="landing-root-in">
+      {/* ── Top Navbar ─────────────────────────────────────────────────── */}
+      <header className="landing-header-in">
+        <div className="landing-container-in header-inner-in">
+          <Link href="/" className="landing-logo-in">
+            <span className="logo-spark-icon-in">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#10b981">
                 <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
               </svg>
             </span>
-            <span className="logo-text">
-              Review<span className="logo-accent">Spark</span>
+            <span className="logo-text-in">
+              Review<span className="logo-accent-in">Spark</span>
             </span>
           </Link>
 
-          <nav className="desktop-nav">
-            <a href="#how-it-works" className="nav-link">How it works</a>
-            <a href="#features" className="nav-link">Features</a>
-            <a href="#contact" className="nav-link">Contact Us</a>
-            <a href="#faq" className="nav-link">FAQ</a>
+          <nav className="desktop-nav-in">
+            <a href="#overview" className="nav-link-in">Overview</a>
+            <a href="#features" className="nav-link-in">Features</a>
+            <a href="#comparison" className="nav-link-in">Why Us</a>
+            <a href="#how-it-works" className="nav-link-in">How It Works</a>
+            <a href="#faq" className="nav-link-in">FAQ</a>
           </nav>
 
-          <div className="header-actions">
-            <Link href="/login" className="btn-nav-login">
-              Login
+          <div className="header-actions-in">
+            <Link href="/login" className="btn-nav-login-in">
+              Sign In
             </Link>
-            <a href="#contact" className="btn-nav-primary">
-              Get Your QR
-            </a>
+            <Link href="/login" className="btn-nav-primary-in">
+              Open Dashboard
+            </Link>
             <button
               type="button"
-              className="mobile-hamburger"
+              className="mobile-hamburger-in"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
@@ -113,357 +161,374 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Mobile Dropdown */}
+        {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="mobile-menu-drawer">
-            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How it works</a>
+          <div className="mobile-drawer-in">
+            <a href="#overview" onClick={() => setMobileMenuOpen(false)}>Overview</a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a>
-            <a href="#contact" onClick={() => setMobileMenuOpen(false)}>Contact Us</a>
+            <a href="#comparison" onClick={() => setMobileMenuOpen(false)}>Why Us</a>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
             <a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-              <Link href="/login" className="btn-nav-login" style={{ flex: 1, textAlign: 'center' }}>
-                Login
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+              <Link href="/login" className="btn-nav-login-in" style={{ flex: 1, textAlign: 'center' }}>
+                Sign In
               </Link>
-              <a href="#contact" className="btn-nav-primary" style={{ flex: 1, textAlign: 'center' }}>
-                Get Your QR
-              </a>
+              <Link href="/login" className="btn-nav-primary-in" style={{ flex: 1, textAlign: 'center' }}>
+                Open Dashboard
+              </Link>
             </div>
           </div>
         )}
       </header>
 
       {/* ── Hero Section ────────────────────────────────────────────────── */}
-      <section className="hero-section">
-        <div className="landing-container hero-inner">
-          <div className="hero-content">
-            <div className="hero-badge">
-              <span className="badge-spark">✨</span>
-              <span>AI-Powered Google Review Platform</span>
-            </div>
+      <section id="overview" className="hero-section-in">
+        <div className="hero-ambient-glow"></div>
+        <div className="landing-container-in hero-inner-in">
+          
+          <div className="hero-badge-in">
+            <span className="hero-badge-dot"></span>
+            <span>AI Reputation &amp; Customer Review Management Platform</span>
+          </div>
 
-            <h1 className="hero-title">
-              Google Business AI reviews from <span className="gradient-text">one QR code</span>
-            </h1>
+          <h1 className="hero-headline-in">
+            More Than Reviews.<br />
+            <span className="gradient-text-emerald">A Brighter Tomorrow.</span>
+          </h1>
 
-            <p className="hero-subtitle">
-              ReviewSpark turns one QR code at your counter into editable AI review drafts in English &amp; Hinglish for happy customers. Low ratings stay in your private inbox. Never auto-post.
-            </p>
+          <p className="hero-description-in">
+            ReviewSpark helps businesses manage customer reviews, automate feedback collection with smart QR stands, respond with contextual AI, track reputation sentiment, and grow from one unified platform.
+          </p>
 
-            <div className="hero-cta-group">
-              <a href="#contact" className="btn-hero-primary">
-                Get Your QR Stand
-              </a>
-              <a
-                href="mailto:parnavagarwal1@gmail.com?subject=Inquiry%20about%20ReviewSpark%20QR%20Stand"
-                className="btn-hero-secondary"
-              >
-                <span>✉️</span> Contact Us
-              </a>
-            </div>
+          <div className="hero-actions-in">
+            <Link href="/login" className="btn-hero-primary-in">
+              Start Managing Reviews
+            </Link>
+            <a href="#how-it-works" className="btn-hero-secondary-in">
+              See How It Works ↓
+            </a>
+          </div>
 
-            <div className="hero-trust-row">
-              <span className="trust-item">✓ Easy setup</span>
-              <span className="trust-item">✓ Dedicated support</span>
-              <span className="trust-item">✓ 100% Google Compliant</span>
+          {/* Blank Placeholder Image Slot for Hero Graphic / Mockup */}
+          <div className="placeholder-hero-image-container">
+            <div className="placeholder-box hero-placeholder">
+              <div className="placeholder-icon">🖼️</div>
+              <div className="placeholder-title">Hero Graphic / Stand Image Placeholder</div>
+              <div className="placeholder-sub">Drop your custom QR stand or hero illustration here</div>
             </div>
           </div>
 
-          {/* Interactive Live Demo Phone Card */}
-          <div className="hero-visual">
-            <div className="demo-stand-wrapper">
-              <div className="demo-card-glow"></div>
+          {/* ── Interactive Live Dashboard Mockup ───────────────────────── */}
+          <div className="dashboard-mockup-wrapper">
+            <div className="dashboard-mockup-card">
               
-              <div className="demo-phone-card">
-                {/* Header inside phone */}
-                <div className="demo-biz-header">
-                  <div className="demo-biz-avatar">S</div>
-                  <div>
-                    <div className="demo-biz-name">Sharma Dental Clinic</div>
-                    <div className="demo-biz-cat">Healthcare &amp; Dental</div>
-                  </div>
+              {/* Top Dashboard Header */}
+              <div className="mock-topbar">
+                <div className="mock-window-dots">
+                  <span className="dot red"></span>
+                  <span className="dot yellow"></span>
+                  <span className="dot green"></span>
                 </div>
+                <div className="mock-title-bar">ReviewSpark Unified Reputation Dashboard</div>
+                <div className="mock-status-pill">● Live Insights</div>
+              </div>
 
-                {/* Google Hero Box */}
-                <div className="demo-google-box">
-                  <span className="demo-google-sub">YOUR REVIEW WILL BE POSTED ON</span>
-                  <div className="demo-google-logo">
-                    <span style={{ color: '#4285F4' }}>G</span>
-                    <span style={{ color: '#EA4335' }}>o</span>
-                    <span style={{ color: '#FBBC05' }}>o</span>
-                    <span style={{ color: '#4285F4' }}>g</span>
-                    <span style={{ color: '#34A853' }}>l</span>
-                    <span style={{ color: '#EA4335' }}>e</span>
-                  </div>
-                  <span className="demo-google-sec">Takes only 10 seconds</span>
+              {/* 4 Stats Metrics */}
+              <div className="mock-stats-grid">
+                <div className="mock-stat-card">
+                  <span className="mock-stat-label">Average Rating</span>
+                  <div className="mock-stat-val text-amber">4.8 ★</div>
+                  <span className="mock-stat-trend text-emerald">↑ +0.4 this month</span>
                 </div>
-
-                {/* Interactive Star Row */}
-                <div className="demo-stars-box">
-                  <div className="demo-stars-title">How was your experience?</div>
-                  <div className="demo-stars-row">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setDemoRating(star)}
-                        className={`demo-star-btn ${star <= demoRating ? 'active' : ''}`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
+                <div className="mock-stat-card">
+                  <span className="mock-stat-label">Total Reviews</span>
+                  <div className="mock-stat-val text-white">1,280+</div>
+                  <span className="mock-stat-trend text-emerald">↑ +18% QR scans</span>
                 </div>
+                <div className="mock-stat-card">
+                  <span className="mock-stat-label">Positive Sentiment</span>
+                  <div className="mock-stat-val text-emerald">94%</div>
+                  <span className="mock-stat-trend text-white-muted">Based on 1.2k ratings</span>
+                </div>
+                <div className="mock-stat-card">
+                  <span className="mock-stat-label">Response Rate</span>
+                  <div className="mock-stat-val text-teal">99%</div>
+                  <span className="mock-stat-trend text-emerald">⚡ Instant AI replies</span>
+                </div>
+              </div>
 
-                {/* Drafts Simulation */}
-                {demoRating >= 4 ? (
-                  <div className="demo-drafts-container">
-                    <div className="demo-draft-header">
-                      <span>🤖 AI DRAFTS READY</span>
-                      <span className="demo-draft-pill">Tap to pick</span>
-                    </div>
-
-                    {demoDrafts.map((d, i) => (
-                      <div
-                        key={i}
-                        onClick={() => setDemoSelectedDraft(i as 0 | 1)}
-                        className={`demo-draft-item ${demoSelectedDraft === i ? 'selected' : ''}`}
-                      >
-                        <div className="demo-draft-badge">{d.badge}</div>
-                        <p className="demo-draft-text">{d.text}</p>
-                      </div>
-                    ))}
-
-                    <button type="button" onClick={handleDemoCopy} className="demo-copy-btn">
-                      {demoCopied ? '✓ Copied to Clipboard!' : '📋 1-Click Copy & Continue'}
+              {/* Interactive Reviews Feed Simulation */}
+              <div className="mock-feed-section">
+                <div className="mock-feed-header">
+                  <div className="mock-feed-tabs">
+                    <button
+                      type="button"
+                      className={`mock-feed-tab ${activeTab === 'all' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('all')}
+                    >
+                      All Reviews (1,280)
+                    </button>
+                    <button
+                      type="button"
+                      className={`mock-feed-tab ${activeTab === 'positive' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('positive')}
+                    >
+                      5★ Google Reviews
+                    </button>
+                    <button
+                      type="button"
+                      className={`mock-feed-tab ${activeTab === 'needs-reply' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('needs-reply')}
+                    >
+                      Needs Reply (1)
                     </button>
                   </div>
-                ) : (
-                  <div className="demo-private-box">
-                    <span style={{ fontSize: '1.5rem' }}>🛡️</span>
-                    <div className="demo-private-title">Private Feedback Shield Active</div>
-                    <p className="demo-private-desc">
-                      1-3★ reviews are kept private in your inbox so you can resolve issues without damaging your Google rating!
+                </div>
+
+                <div className="mock-review-items">
+                  {/* Review 1 */}
+                  <div className="mock-review-item">
+                    <div className="mock-reviewer-header">
+                      <div className="mock-avatar">PS</div>
+                      <div className="mock-reviewer-info">
+                        <div className="mock-reviewer-name">Priya Sharma</div>
+                        <div className="mock-review-meta">5.0 ★ · Google Maps Review · 2 hours ago</div>
+                      </div>
+                      <span className="mock-badge-success">✓ Published to Google</span>
+                    </div>
+                    <p className="mock-review-text">
+                      &quot;Great service and amazing experience. The staff was super polite and welcoming. Highly recommend!&quot;
                     </p>
+
+                    {/* AI Reply Box */}
+                    <div className="mock-ai-reply-box">
+                      <div className="mock-ai-label">
+                        <span>🤖 Smart AI Generated Reply</span>
+                        <span className="mock-ai-tag">Personalized &amp; Human</span>
+                      </div>
+                      {repliedPriya ? (
+                        <p className="mock-reply-sent">✓ Sent: &quot;{replyText}&quot;</p>
+                      ) : (
+                        <>
+                          <textarea
+                            className="mock-reply-textarea"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            rows={2}
+                          />
+                          <button
+                            type="button"
+                            className="btn-mock-reply"
+                            onClick={() => setRepliedPriya(true)}
+                          >
+                            Send Reply via AI
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
+
+                  {/* Review 2 - Low Rating Protected */}
+                  <div className="mock-review-item private-shield">
+                    <div className="mock-reviewer-header">
+                      <div className="mock-avatar orange">RM</div>
+                      <div className="mock-reviewer-info">
+                        <div className="mock-reviewer-name">Rahul Mehta</div>
+                        <div className="mock-review-meta">2.0 ★ · Private Feedback Filter · Yesterday</div>
+                      </div>
+                      <span className="mock-badge-shield">🛡️ Protected from Public Google</span>
+                    </div>
+                    <p className="mock-review-text">
+                      &quot;The food was good, but our waiting time on Sunday afternoon was a bit too long.&quot;
+                    </p>
+                    <div className="mock-internal-note">
+                      <span>💡 Internal Recommendation:</span> Peak wait time alert logged. Manager contacted customer privately to resolve. Public rating remains protected at 4.8★.
+                    </div>
+                  </div>
+                </div>
               </div>
+
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── 3 Value Pillars ─────────────────────────────────────────────── */}
-      <section className="pillars-section">
-        <div className="landing-container">
-          <div className="section-head text-center">
-            <span className="section-kicker">Core Philosophy</span>
-            <h2 className="section-title">
-              A Google review QR at your counter.<br />A cleaner Google rating.
-            </h2>
-            <p className="section-desc">
-              ReviewSpark is built for Indian local businesses: one printed QR, an AI review generator for happy customers, and private feedback for low ratings.
+      {/* ── Key Features Grid (01–06) ────────────────────────────────────── */}
+      <section id="features" className="section-in">
+        <div className="landing-container-in">
+          <div className="section-header-in">
+            <span className="kicker-in">Platform Capabilities</span>
+            <h2 className="title-in">Built for reputation, designed for growth</h2>
+            <p className="desc-in">
+              ReviewSpark replaces manual follow-ups and generic tools with an intelligent, friction-free ecosystem.
             </p>
           </div>
 
-          <div className="pillars-grid">
-            <div className="pillar-card">
-              <div className="pillar-num">01</div>
-              <div className="pillar-tag">Happy Visits</div>
-              <h3 className="pillar-heading">AI Review Generator for Google Maps</h3>
-              <p className="pillar-text">
-                Customers scan your QR code, rate 4 or 5 stars, pick an AI review draft in pure English or natural conversational Hinglish, and post on Google Maps themselves.
-              </p>
-            </div>
-
-            <div className="pillar-card">
-              <div className="pillar-num">02</div>
-              <div className="pillar-tag">Tough Visits</div>
-              <h3 className="pillar-heading">Private Feedback Before a Public Review</h3>
-              <p className="pillar-text">
-                1-3 star ratings go straight to your private dashboard inbox — not a public Google Business Profile review. You get the opportunity to fix customer issues first.
-              </p>
-            </div>
-
-            <div className="pillar-card">
-              <div className="pillar-num">03</div>
-              <div className="pillar-tag">Your Reputation</div>
-              <h3 className="pillar-heading">QR Review System You Print Once</h3>
-              <p className="pillar-text">
-                ReviewSpark never auto-posts or fakes reviews. Customers review directly in their phone browser without downloading any mobile app. One printed QR does the heavy lifting.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── How It Works ────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="how-it-works-section">
-        <div className="landing-container">
-          <div className="section-head text-center">
-            <span className="section-kicker">Step-By-Step</span>
-            <h2 className="section-title">How a Google review QR code works</h2>
-            <p className="section-desc">
-              Scan. Rate. Then it splits. Happy visits go to Google Maps with an AI review draft. Tough visits stay private.
-            </p>
-          </div>
-
-          <div className="steps-grid">
-            <div className="step-card">
-              <div className="step-badge">01</div>
-              <h4 className="step-title">Customer Scans Your QR</h4>
-              <p className="step-text">No app download needed. Works directly in standard phone cameras and browsers.</p>
-            </div>
-
-            <div className="step-card">
-              <div className="step-badge">02</div>
-              <h4 className="step-title">They Rate 1 to 5 Stars</h4>
-              <p className="step-text">Fast, tap-friendly star selection that matches standard Google review expectations.</p>
-            </div>
-
-            <div className="step-card highlight-orange">
-              <div className="step-badge">03</div>
-              <h4 className="step-title">1–3★ Stays Private</h4>
-              <p className="step-text">Negative feedback is redirected to your private dashboard inbox. Never posted to Google.</p>
-            </div>
-
-            <div className="step-card highlight-blue">
-              <div className="step-badge">04</div>
-              <h4 className="step-title">4–5★ AI Draft on Google</h4>
-              <p className="step-text">Customers get instant English &amp; Hinglish suggestions, copy with 1 click, and post to Google Maps.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Three Heavy-Lifting Features ─────────────────────────────────── */}
-      <section id="features" className="features-section">
-        <div className="landing-container">
-          <div className="section-head text-center">
-            <span className="section-kicker">Features</span>
-            <h2 className="section-title">Three features that do the heavy lifting</h2>
-            <p className="section-desc">
-              No complicated dashboard to babysit. ReviewSpark runs quietly in the background and keeps your reputation growing.
-            </p>
-          </div>
-
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon-box">🖨️</div>
-              <h3 className="feature-title">Counter QR Code System</h3>
-              <p className="feature-text">
-                One Google review QR code for every customer. Print it once, place it on your checkout counter, tables, or bills.
-              </p>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon-box">🛡️</div>
-              <h3 className="feature-title">Negative Review Shield</h3>
-              <p className="feature-text">
-                Low ratings are intercepted in your private feedback inbox so you can resolve customer complaints before they harm your public score.
-              </p>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon-box">✍️</div>
-              <h3 className="feature-title">English &amp; Hinglish AI Generator</h3>
-              <p className="feature-text">
-                Customers who don&apos;t know what to write get two authentic AI suggestions — one in natural English and one in conversational Hinglish.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Built For Every Business ─────────────────────────────────────── */}
-      <section className="industries-section">
-        <div className="landing-container">
-          <div className="section-head text-center">
-            <span className="section-kicker">Universal Solution</span>
-            <h2 className="section-title">Google review QR for every shop</h2>
-            <p className="section-desc">
-              Same QR. Different counter. Restaurants, salons, clinics, and every local business across India.
-            </p>
-          </div>
-
-          <div className="industries-grid">
-            {industries.map((item, idx) => (
-              <div key={idx} className="industry-card">
-                <span className="ind-icon">{item.icon}</span>
-                <div className="ind-name">{item.name}</div>
-                <div className="ind-placement">{item.placement}</div>
+          <div className="features-grid-in">
+            {features.map((feat, idx) => (
+              <div key={idx} className="feature-card-in">
+                <div className="feature-card-top">
+                  <span className="feature-icon-in">{feat.icon}</span>
+                  <span className="feature-tag-in">{feat.tag}</span>
+                </div>
+                <h3 className="feature-title-in">{feat.title}</h3>
+                <p className="feature-desc-in">{feat.desc}</p>
+                {/* Blank Placeholder Image Slot for Feature Graphic */}
+                <div className="placeholder-box feature-placeholder">
+                  <div className="placeholder-sub">Feature Graphic Placeholder</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Contact Us Section ─────────────────────────────────────────── */}
-      <section id="contact" className="contact-section">
-        <div className="landing-container">
-          <div className="contact-card-wrapper">
-            <div className="contact-card-glow"></div>
-            <div className="contact-card-inner">
-              <span className="section-kicker" style={{ textAlign: 'center' }}>Get In Touch</span>
-              <h2 className="contact-card-title">
-                To get your QR stand or have any query, <span className="gradient-text">Contact Us</span>
-              </h2>
-              <p className="contact-card-desc">
-                Have questions, want a customized QR code stand for your shop or clinic, or need help setting up your Google Business Profile? Drop us an email anytime and we will get back to you promptly!
+      {/* ── Comparison Section: Traditional Tools vs ReviewSpark ──────────── */}
+      <section id="comparison" className="section-in alt-bg">
+        <div className="landing-container-in">
+          <div className="section-header-in">
+            <span className="kicker-in">Why ReviewSpark</span>
+            <h2 className="title-in">Traditional tools vs. Modern AI reputation</h2>
+            <p className="desc-in">
+              See why forward-thinking businesses choose ReviewSpark over outdated manual follow-ups and fragmented software.
+            </p>
+          </div>
+
+          <div className="comparison-table-wrapper">
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th className="th-feature">Capability</th>
+                  <th className="th-old">Traditional Methods</th>
+                  <th className="th-new">ReviewSpark</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.map((row, idx) => (
+                  <tr key={idx}>
+                    <td className="td-feature">{row.feature}</td>
+                    <td className="td-old">
+                      <span className="cross-icon">✕</span> {row.traditional}
+                    </td>
+                    <td className="td-new">
+                      <span className="check-icon">✓</span> {row.reviewspark}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Step-by-Step Flow ────────────────────────────────────────────── */}
+      <section id="how-it-works" className="section-in">
+        <div className="landing-container-in">
+          <div className="section-header-in">
+            <span className="kicker-in">How It Works</span>
+            <h2 className="title-in">From QR scan to 5-star Google review in seconds</h2>
+            <p className="desc-in">
+              Frictionless for your customers. Zero maintenance for your staff.
+            </p>
+          </div>
+
+          <div className="steps-container-in">
+            <div className="step-item-in">
+              <div className="step-num-in">01</div>
+              <h4 className="step-title-in">Scan Counter QR</h4>
+              <p className="step-desc-in">
+                Customer scans your printable stand using their default phone camera. No app download required.
               </p>
-
-              <div className="contact-email-box">
-                <span className="contact-email-label">DIRECT EMAIL CONTACT</span>
-                <a href="mailto:parnavagarwal1@gmail.com?subject=ReviewSpark%20QR%20Stand%20Inquiry" className="contact-email-link">
-                  <span className="contact-email-icon">✉️</span>
-                  <span>parnavagarwal1@gmail.com</span>
-                </a>
+              <div className="placeholder-box step-placeholder">
+                <div className="placeholder-sub">QR Scan Graphic Placeholder</div>
               </div>
+            </div>
 
-              <div className="contact-benefits-row">
-                <div className="contact-benefit-item">
-                  <span>🚀</span>
-                  <span>Instant Setup Support</span>
-                </div>
-                <div className="contact-benefit-item">
-                  <span>🖨️</span>
-                  <span>High-Resolution QR Stand PDF</span>
-                </div>
-                <div className="contact-benefit-item">
-                  <span>🤝</span>
-                  <span>Customized for Your Business</span>
-                </div>
+            <div className="step-item-in">
+              <div className="step-num-in">02</div>
+              <h4 className="step-title-in">Rate 1 to 5 Stars</h4>
+              <p className="step-desc-in">
+                Fast tap-friendly rating interface matching Google Maps expectations with custom aspects and tags.
+              </p>
+              <div className="placeholder-box step-placeholder">
+                <div className="placeholder-sub">Star Rating Graphic Placeholder</div>
+              </div>
+            </div>
+
+            <div className="step-item-in highlight-emerald">
+              <div className="step-num-in">03</div>
+              <h4 className="step-title-in">High Ratings get AI Drafts</h4>
+              <p className="step-desc-in">
+                4-5★ ratings receive instant AI suggestions in English &amp; Hinglish. 1-click copy &amp; continue to Google.
+              </p>
+              <div className="placeholder-box step-placeholder">
+                <div className="placeholder-sub">AI Drafts Graphic Placeholder</div>
+              </div>
+            </div>
+
+            <div className="step-item-in highlight-shield">
+              <div className="step-num-in">04</div>
+              <h4 className="step-title-in">Low Ratings Stay Private</h4>
+              <p className="step-desc-in">
+                1-3★ ratings are filtered to your private dashboard inbox so you can resolve complaints without public damage.
+              </p>
+              <div className="placeholder-box step-placeholder">
+                <div className="placeholder-sub">Private Shield Graphic Placeholder</div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── FAQ Section ─────────────────────────────────────────────────── */}
-      <section id="faq" className="faq-section">
-        <div className="landing-container">
-          <div className="section-head text-center">
-            <span className="section-kicker">FAQ</span>
-            <h2 className="section-title">Questions owners actually ask</h2>
-            <p className="section-desc">
-              QR scan, AI drafts, private inbox, Google Maps. Nothing auto-posts.
+      {/* ── Industries Grid ─────────────────────────────────────────────── */}
+      <section className="section-in alt-bg">
+        <div className="landing-container-in">
+          <div className="section-header-in">
+            <span className="kicker-in">Every Local Business</span>
+            <h2 className="title-in">Tailored for counters, tables, and clinics</h2>
+            <p className="desc-in">
+              Trusted by restaurants, healthcare clinics, wellness salons, and services across India.
             </p>
           </div>
 
-          <div className="faq-accordion">
+          <div className="industries-grid-in">
+            {industries.map((ind, idx) => (
+              <div key={idx} className="industry-box-in">
+                <span className="industry-icon-in">{ind.icon}</span>
+                <div className="industry-title-in">{ind.name}</div>
+                <div className="industry-placement-in">{ind.placement}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ Section ─────────────────────────────────────────────────── */}
+      <section id="faq" className="section-in">
+        <div className="landing-container-in">
+          <div className="section-header-in">
+            <span className="kicker-in">Common Questions</span>
+            <h2 className="title-in">Frequently Asked Questions</h2>
+            <p className="desc-in">
+              Everything you need to know about ReviewSpark, Google compliance, and reputation management.
+            </p>
+          </div>
+
+          <div className="faq-container-in">
             {faqs.map((faq, index) => {
               const isOpen = openFaq === index;
               return (
-                <div key={index} className={`faq-item ${isOpen ? 'open' : ''}`}>
+                <div key={index} className={`faq-card-in ${isOpen ? 'open' : ''}`}>
                   <button
                     type="button"
-                    className="faq-question-btn"
+                    className="faq-trigger-in"
                     onClick={() => setOpenFaq(isOpen ? null : index)}
                   >
-                    <span className="faq-num">0{index + 1}</span>
-                    <span className="faq-question-text">{faq.q}</span>
-                    <span className="faq-chevron">{isOpen ? '−' : '+'}</span>
+                    <span className="faq-idx-in">0{index + 1}</span>
+                    <span className="faq-q-text-in">{faq.q}</span>
+                    <span className="faq-toggle-icon">{isOpen ? '−' : '+'}</span>
                   </button>
-                  {isOpen && <div className="faq-answer">{faq.a}</div>}
+                  {isOpen && <div className="faq-body-in">{faq.a}</div>}
                 </div>
               );
             })}
@@ -471,62 +536,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Bottom Call To Action ───────────────────────────────────────── */}
-      <section className="bottom-cta-section">
-        <div className="landing-container bottom-cta-inner">
-          <h2 className="bottom-cta-title">
+      {/* ── Bottom Call To Action Banner ─────────────────────────────────── */}
+      <section className="bottom-banner-in">
+        <div className="landing-container-in bottom-banner-content-in">
+          <h2 className="bottom-banner-title-in">
             Put one QR on the counter.<br />
-            <span className="gradient-text">Google reviews follow.</span>
+            <span className="gradient-text-emerald">Google reviews follow.</span>
           </h2>
-          <p className="bottom-cta-desc">
-            Happy customers get an AI draft and post on Google Maps. 1-3 stars stay in your private inbox. You never auto-post.
+          <p className="bottom-banner-desc-in">
+            Start automating customer reviews, protecting your rating, and growing your local search presence today.
           </p>
-          <a
-            href="mailto:parnavagarwal1@gmail.com?subject=Get%20Started%20with%20ReviewSpark%20QR"
-            className="btn-hero-primary bottom-cta-btn"
-          >
-            Contact to Get Your QR Stand
-          </a>
-          <div className="hero-trust-row" style={{ marginTop: '1.25rem' }}>
-            <span className="trust-item">✓ Fast response</span>
-            <span className="trust-item">✓ Free consultation</span>
-            <span className="trust-item">✓ 100% Google Compliant</span>
+          <div className="bottom-banner-actions">
+            <Link href="/login" className="btn-hero-primary-in">
+              Get Started with ReviewSpark
+            </Link>
           </div>
         </div>
       </section>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="landing-footer">
-        <div className="landing-container footer-inner">
-          <div className="footer-brand">
-            <Link href="/" className="landing-logo">
-              <span className="logo-spark-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#6366f1">
+      <footer className="footer-in">
+        <div className="landing-container-in footer-inner-in">
+          <div className="footer-brand-in">
+            <Link href="/" className="landing-logo-in">
+              <span className="logo-spark-icon-in">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#10b981">
                   <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
                 </svg>
               </span>
-              <span className="logo-text">Review<span className="logo-accent">Spark</span></span>
+              <span className="logo-text-in">Review<span className="logo-accent-in">Spark</span></span>
             </Link>
-            <p className="footer-copy">
-              AI-powered Google review QR code and reputation system for local businesses.
+            <p className="footer-tagline-in">
+              AI-Powered Reputation and Customer Review Management Platform.
             </p>
           </div>
 
-          <div className="footer-links-row">
-            <a href="#how-it-works">How it works</a>
+          <div className="footer-nav-in">
+            <a href="#overview">Overview</a>
             <a href="#features">Features</a>
-            <a href="#contact">Contact Us</a>
+            <a href="#comparison">Why Us</a>
+            <a href="#how-it-works">How It Works</a>
             <a href="#faq">FAQ</a>
-            <Link href="/login">Admin Login</Link>
-            <a
-              href="mailto:parnavagarwal1@gmail.com"
-              style={{ color: '#818cf8', fontWeight: 600 }}
-            >
-              ✉️ parnavagarwal1@gmail.com
-            </a>
+            <Link href="/login">Dashboard</Link>
           </div>
 
-          <div className="footer-bottom">
+          <div className="footer-copyright-in">
             <p>© {new Date().getFullYear()} ReviewSpark. All rights reserved.</p>
           </div>
         </div>
