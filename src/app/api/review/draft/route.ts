@@ -4,6 +4,41 @@ import { generateReviewDrafts, isOpenAIConfigured, GenerateDraftOptions } from '
 import { recordEvent, recordAiUsage } from '@/lib/analytics';
 import { checkRateLimit, getClientIp, hashIp } from '@/lib/rateLimit';
 
+// ── Cached AI Daily Cost Tracking (avoids slow DB table scans on every request) ──
+let cachedTodayCost = 0;
+let lastCostFetchTime = 0;
+let lastCostDateStr = '';
+const COST_CACHE_TTL_MS = 60_000; // Check DB at most once per minute
+
+async function getCachedTodayCost(): Promise<number> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const now = Date.now();
+  if (lastCostDateStr === todayStr && now - lastCostFetchTime < COST_CACHE_TTL_MS) {
+    return cachedTodayCost;
+  }
+
+  try {
+    const { data: todayUsage } = await supabase
+      .from('ai_usage')
+      .select('estimated_cost_usd')
+      .gte('created_at', today.toISOString());
+
+    cachedTodayCost = (todayUsage ?? []).reduce(
+      (sum, r) => sum + Number(r.estimated_cost_usd),
+      0
+    );
+    lastCostFetchTime = now;
+    lastCostDateStr = todayStr;
+  } catch (err) {
+    console.warn('[review/draft] Cost check query skipped/failed, using cached:', err);
+  }
+
+  return cachedTodayCost;
+}
+
 // POST /api/review/draft — generate AI review drafts (public, rate-limited)
 export async function POST(request: NextRequest) {
   // ── Rate limiting: 10 draft requests per IP per minute ────────────────────
@@ -89,20 +124,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── Global AI cost cap (configurable daily limit) ─────────────────────────
+  // ── Global AI cost cap (configurable daily limit, cached for speed) ───────
   const dailyCostCapUsd = parseFloat(process.env.AI_DAILY_COST_CAP_USD ?? '10');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const { data: todayUsage } = await supabase
-    .from('ai_usage')
-    .select('estimated_cost_usd')
-    .gte('created_at', today.toISOString());
-
-  const todayCost = (todayUsage ?? []).reduce(
-    (sum, r) => sum + Number(r.estimated_cost_usd),
-    0
-  );
+  const todayCost = await getCachedTodayCost();
 
   if (todayCost >= dailyCostCapUsd) {
     return NextResponse.json(

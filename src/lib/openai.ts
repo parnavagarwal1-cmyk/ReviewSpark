@@ -140,10 +140,24 @@ function getGeminiClient(apiKey: string): OpenAI {
     client = new OpenAI({
       apiKey,
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      timeout: 7000, // 7-second timeout so customer never hangs
+      maxRetries: 1, // Rapid failover to backup key instead of long backoff
     });
     geminiClientCache.set(apiKey, client);
   }
   return client;
+}
+
+/**
+ * Returns the Gemini model to use.
+ * Defaults to 'gemini-1.5-flash' — Google's fastest, highest-speed production model.
+ */
+export function getGeminiModel(): string {
+  const envModel = process.env.GEMINI_MODEL || process.env.OPENAI_MODEL;
+  if (envModel && !envModel.includes('3.5-flash-lite')) {
+    return envModel;
+  }
+  return 'gemini-1.5-flash';
 }
 
 /**
@@ -208,10 +222,7 @@ async function executeChatCompletionWithFallback(
   usedKeyMasked?: string;
 }> {
   const geminiKeys = getOrderedGeminiKeys();
-  const geminiModel =
-    process.env.GEMINI_MODEL ??
-    process.env.OPENAI_MODEL ??
-    'gemini-3.5-flash-lite';
+  const geminiModel = getGeminiModel();
 
   // 1. Attempt with Google Gemini keys in priority order
   if (geminiKeys.length > 0) {
@@ -320,14 +331,15 @@ async function executeChatCompletionWithFallback(
 
 export const OPENAI_MODEL =
   getGeminiApiKeys().length > 0
-    ? (process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite')
+    ? getGeminiModel()
     : (process.env.OPENAI_MODEL ?? 'gpt-4o-mini');
 
 // Cost per 1M tokens (approximate, update as pricing changes)
 const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
-  'gemini-3.5-flash-lite': 0.075,
-  'gemini-2.5-flash': 0.075,
   'gemini-1.5-flash': 0.075,
+  'gemini-1.5-flash-8b': 0.0375,
+  'gemini-2.0-flash': 0.10,
+  'gemini-2.5-flash': 0.075,
   'gemini-1.5-pro': 1.25,
   'gpt-4o-mini': 0.15,
   'gpt-4o': 2.50,
@@ -335,9 +347,10 @@ const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
   'gpt-3.5-turbo': 0.50,
 };
 const COST_PER_1M_OUTPUT_TOKENS: Record<string, number> = {
-  'gemini-3.5-flash-lite': 0.30,
-  'gemini-2.5-flash': 0.30,
   'gemini-1.5-flash': 0.30,
+  'gemini-1.5-flash-8b': 0.15,
+  'gemini-2.0-flash': 0.40,
+  'gemini-2.5-flash': 0.30,
   'gemini-1.5-pro': 5.00,
   'gpt-4o-mini': 0.60,
   'gpt-4o': 10.00,
@@ -506,39 +519,13 @@ export async function generateReviewDrafts(
   const emojiDirective = getEmojiDirective(rating);
   const variationSeed = Math.random().toString(36).substring(2, 8);
 
-  const systemPrompt = `You are a helpful assistant that writes authentic, human-sounding Google Review drafts for customers.
-Every review you write must feel like a genuine, unique review posted by a real person on Google Maps.
+  const systemPrompt = `You are an authentic Google Review writer for Indian local businesses.
+Write EXACTLY 2 distinct, human review drafts:
+- "Draft 1:" in natural ${lang1} (${lengthProfile.d1}).
+- "Draft 2:" in conversational ${lang2} (${lengthProfile.d2}) in Roman script (e.g. "Staff kaafi polite tha aur service bohot acchi lagi...").
 
-CRITICAL VARIETY & ANTI-REPETITION RULES:
-1. NEVER use generic AI opening clichés such as:
-   - "I recently visited..."
-   - "I had an amazing/wonderful experience at..."
-   - "I cannot recommend this place enough..."
-   - "If you are looking for..."
-   - "Top-notch service from start to finish..."
-   - "Look no further..."
-2. Start directly with an action, observation, situation, or distinct sentiment (e.g., "Got my checkup done today...", "Visited on a friend's recommendation...", "Super clean setup and zero waiting time...", "Dr. Sharma explained everything patiently without rushing...", "Really smooth appointment from start to end...").
-3. Each generation must sound completely fresh and different in phrasing, rhythm, and sentence structure.
-4. Tone must strictly match the customer rating: ${sentiment}.
-
-LANGUAGE & FORMAT INSTRUCTIONS:
-- Write EXACTLY 2 distinct draft options:
-  - "Draft 1:" must be written in natural ${lang1}.
-  - "Draft 2:" must be written in authentic conversational ${lang2} (Roman script, as spoken in India, e.g., "Treatment bilkul painless tha aur doctor sahab ka nature bohot accha hai...").
-
-LENGTH VARIATION (MUST DIFFER NOTICEABLY):
-- Draft 1 target length: ${lengthProfile.d1}.
-- Draft 2 target length: ${lengthProfile.d2}.
-- One draft MUST be distinctly shorter or longer than the other. NEVER make both drafts similar in length or identical in structure!
-
-EMOJI GUIDELINE:
-- ${emojiDirective}
-- Never spam emojis. Keep them subtle and human.
-
-GROUNDING & INTEGRATION:
-- Naturally incorporate any provided aspects, customer tags, service keywords, or customer personal notes.
-- DO NOT invent unmentioned specific facts (e.g., fake staff names, fake prices, or fake menu items).
-- Avoid marketing slogans or promotional corporate jargon.`;
+Tone: ${sentiment} (${rating}/5 stars).
+Rules: Start directly with observations. Never use clichés ("I recently visited", "Top notch service"). ${emojiDirective}. No fake facts.`;
 
   const userPrompt = `Business: ${businessName}
 ${categoryContext}
@@ -548,35 +535,90 @@ ${highlightsContext}
 ${aspectsContext}
 ${tagsContext}
 ${customerNoteContext}
-Customer rating: ${rating}/5 stars (${sentiment})
-Writing angle: ${stylePerspective}
+Rating: ${rating}/5 stars (${sentiment})
 Variety seed: ${variationSeed}
 
-Generate Draft 1 in ${lang1} (${lengthProfile.d1}) and Draft 2 in ${lang2} (${lengthProfile.d2}).`;
+Output:
+Draft 1:
+Draft 2:`;
 
-  const { response, model } = await executeChatCompletionWithFallback({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    max_tokens: 500,
-    temperature: 0.95,
-  });
+  try {
+    const { response, model } = await executeChatCompletionWithFallback({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      max_tokens: 220,
+      temperature: 0.75,
+    });
 
-  const content = response.choices[0]?.message?.content ?? '';
-  const drafts = parseDrafts(content);
+    const content = response.choices[0]?.message?.content ?? '';
+    const drafts = parseDrafts(content);
 
-  const tokensPrompt = response.usage?.prompt_tokens ?? 0;
-  const tokensCompletion = response.usage?.completion_tokens ?? 0;
-  const estimatedCost = estimateCost(model, tokensPrompt, tokensCompletion);
+    const tokensPrompt = response.usage?.prompt_tokens ?? 0;
+    const tokensCompletion = response.usage?.completion_tokens ?? 0;
+    const estimatedCost = estimateCost(model, tokensPrompt, tokensCompletion);
 
-  return {
-    drafts,
-    tokens_prompt: tokensPrompt,
-    tokens_completion: tokensCompletion,
-    model,
-    estimated_cost_usd: estimatedCost,
-  };
+    return {
+      drafts,
+      tokens_prompt: tokensPrompt,
+      tokens_completion: tokensCompletion,
+      model,
+      estimated_cost_usd: estimatedCost,
+    };
+  } catch (err) {
+    // If all AI calls failed, timed out, or hit limits, provide instant high-quality fallback reviews
+    console.warn('[AI Drafts] Network/AI unavailable, using instant contextual fallback:', err);
+    const drafts = generateInstantFallbackDrafts(businessName, rating, lang1, lang2, options);
+    return {
+      drafts,
+      tokens_prompt: 0,
+      tokens_completion: 0,
+      model: 'instant-template-fallback',
+      estimated_cost_usd: 0,
+    };
+  }
+}
+
+/**
+ * Generates instant customized fallback drafts if AI API times out or is offline.
+ * Zero latency, 100% reliable.
+ */
+export function generateInstantFallbackDrafts(
+  businessName: string,
+  rating: number,
+  lang1 = 'English',
+  lang2 = 'Hinglish',
+  options?: GenerateDraftOptions
+): [string, string] {
+  const highlights = options?.selectedTags?.join(', ') || options?.selectedAspects?.join(', ') || '';
+
+  if (rating >= 4) {
+    const enOptions = [
+      `Really smooth and pleasant experience at ${businessName}. ${highlights ? `Loved the ${highlights}. ` : ''}The staff was courteous, polite, and everything was taken care of quickly. Highly recommended!`,
+      `Had a great visit here today. Very professional team and clean, well-maintained setup. ${highlights ? `Special mention to ${highlights}. ` : ''}Will definitely be coming back.`,
+      `Great service from start to finish at ${businessName}. Transparent, fast, and very helpful staff. Definitely worth visiting!`,
+    ];
+    const hiOptions = [
+      `Bohot hi badhiya experience raha ${businessName} me. ${highlights ? `${highlights} kaafi accha tha. ` : ''}Staff ka nature bohot helpful aur polite tha. Definitely recommend karunga!`,
+      `${businessName} par service kaafi fast aur smooth thi. Staff ne sab acche se explain kiya aur bilkul hassle-free visit raha. 5 stars!`,
+      `Kaafi acchi jagah hai aur service bhi 10/10 hai. Sab kuch time pe aur bina kisi problem ke ho gaya. Very happy with the service!`,
+    ];
+
+    const d1 = enOptions[Math.floor(Math.random() * enOptions.length)];
+    const d2 = hiOptions[Math.floor(Math.random() * hiOptions.length)];
+    return [d1, d2];
+  } else if (rating === 3) {
+    return [
+      `Average experience at ${businessName}. Service was okay but there is room for improvement in speed and waiting time.`,
+      `Experience theek-thaak tha ${businessName} par. Service normal thi par thoda better kiya ja sakta hai.`,
+    ];
+  } else {
+    return [
+      `Expected a much better experience at ${businessName}. The wait time was long and staff coordination could be improved.`,
+      `${businessName} me experience itna accha nahi raha. Service kaafi slow thi aur improvement ki zaroorat hai.`,
+    ];
+  }
 }
 
 /**
