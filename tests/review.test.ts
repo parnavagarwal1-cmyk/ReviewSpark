@@ -1,4 +1,13 @@
-import { estimateCost, isOpenAIConfigured } from '../src/lib/openai';
+import {
+  estimateCost,
+  isOpenAIConfigured,
+  getGeminiApiKeys,
+  maskKey,
+  isFailoverError,
+  getOrderedGeminiKeys,
+  getGeminiKeyStatus,
+  resetGeminiKeyCooldowns,
+} from '../src/lib/openai';
 import { checkRateLimit, hashIp } from '../src/lib/rateLimit';
 
 describe('OpenAI Utilities', () => {
@@ -45,9 +54,76 @@ describe('OpenAI Utilities', () => {
     it('returns false when neither API key is set', () => {
       delete process.env.OPENAI_API_KEY;
       delete process.env.GEMINI_API_KEY;
+      delete process.env.GEMINI_API_KEYS;
+      delete process.env.GEMINI_API_KEY_1;
+      delete process.env.GEMINI_API_KEY_2;
       expect(isOpenAIConfigured()).toBe(false);
       // Restore
       process.env.OPENAI_API_KEY = 'sk-mock-openai-key';
+    });
+  });
+
+  describe('Multi-Key Gemini Pool', () => {
+    const originalEnv = { ...process.env };
+
+    beforeEach(() => {
+      resetGeminiKeyCooldowns();
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.GEMINI_API_KEYS;
+      for (let i = 1; i <= 20; i++) {
+        delete process.env[`GEMINI_API_KEY_${i}`];
+      }
+    });
+
+    afterAll(() => {
+      process.env = originalEnv;
+    });
+
+    it('extracts multiple comma-separated keys from GEMINI_API_KEY', () => {
+      process.env.GEMINI_API_KEY = 'AIzaSyKeyOne12345, AIzaSyKeyTwo67890';
+      const keys = getGeminiApiKeys();
+      expect(keys).toEqual(['AIzaSyKeyOne12345', 'AIzaSyKeyTwo67890']);
+    });
+
+    it('extracts keys from GEMINI_API_KEYS with various delimiters', () => {
+      process.env.GEMINI_API_KEYS = 'AIzaSyKeyA12345\nAIzaSyKeyB67890; AIzaSyKeyC99999';
+      const keys = getGeminiApiKeys();
+      expect(keys).toEqual(['AIzaSyKeyA12345', 'AIzaSyKeyB67890', 'AIzaSyKeyC99999']);
+    });
+
+    it('extracts numbered keys GEMINI_API_KEY_1, GEMINI_API_KEY_2', () => {
+      process.env.GEMINI_API_KEY_1 = 'AIzaSyKeyNum11111';
+      process.env.GEMINI_API_KEY_2 = 'AIzaSyKeyNum22222';
+      const keys = getGeminiApiKeys();
+      expect(keys).toContain('AIzaSyKeyNum11111');
+      expect(keys).toContain('AIzaSyKeyNum22222');
+    });
+
+    it('deduplicates identical keys and ignores placeholder values', () => {
+      process.env.GEMINI_API_KEYS = 'AIzaSyKeyA12345, AIzaSyKeyA12345, your-gemini-key-here, short';
+      const keys = getGeminiApiKeys();
+      expect(keys).toEqual(['AIzaSyKeyA12345']);
+    });
+
+    it('masks keys securely for logging', () => {
+      expect(maskKey('AIzaSyABCDEF123456789XYZ')).toBe('AIzaSy...9XYZ');
+      expect(maskKey('short')).toBe('***');
+    });
+
+    it('identifies failover-worthy rate limit / quota errors', () => {
+      expect(isFailoverError({ status: 429, message: 'Too Many Requests' })).toBe(true);
+      expect(isFailoverError({ message: 'Quota exceeded for quota metric Queries' })).toBe(true);
+      expect(isFailoverError({ message: 'Resource has been exhausted (e.g. check quota)' })).toBe(true);
+      expect(isFailoverError({ status: 403, message: 'API key not valid' })).toBe(true);
+      expect(isFailoverError({ message: 'Invalid model parameters' })).toBe(false);
+    });
+
+    it('tracks key status correctly', () => {
+      process.env.GEMINI_API_KEYS = 'AIzaSyKeyA12345, AIzaSyKeyB67890';
+      const status = getGeminiKeyStatus();
+      expect(status.total).toBe(2);
+      expect(status.healthy).toBe(2);
+      expect(status.coolingDown).toBe(0);
     });
   });
 });

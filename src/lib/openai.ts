@@ -2,7 +2,8 @@
  * OpenAI / Google Gemini integration for ReviewSpark.
  *
  * Security & compliance:
- * - API key is server-side only (GEMINI_API_KEY or OPENAI_API_KEY, no NEXT_PUBLIC_ prefix)
+ * - API keys are server-side only (GEMINI_API_KEY / GEMINI_API_KEYS or OPENAI_API_KEY, no NEXT_PUBLIC_ prefix)
+ * - Multi-key Gemini pool: automatically switches to backup keys when rate limits / quota are reached
  * - No customer PII is stored; only token usage is recorded in ai_usage table
  * - Prompts explicitly instruct the model not to invent specific unmentioned facts
  * - Drafts are clearly labeled as AI suggestions in the UI
@@ -11,44 +12,316 @@
 
 import OpenAI from 'openai';
 
-let _client: OpenAI | null = null;
-let _currentProvider: 'gemini' | 'openai' | null = null;
+// ── Multi-Key Gemini Pool & State Tracking ────────────────────────────────────
 
-function getClient(): { client: OpenAI; model: string } {
-  // Support Google Gemini via its official OpenAI-compatible endpoint
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    if (!_client || _currentProvider !== 'gemini') {
-      _client = new OpenAI({
-        apiKey: geminiKey,
-        baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      });
-      _currentProvider = 'gemini';
-    }
-    const model = process.env.GEMINI_MODEL ?? process.env.OPENAI_MODEL ?? 'gemini-3.5-flash-lite';
-    return { client: _client, model };
+interface KeyState {
+  key: string;
+  failedAt: number; // timestamp in ms
+  failCount: number;
+  lastError?: string;
+}
+
+const keyStateMap = new Map<string, KeyState>();
+const geminiClientCache = new Map<string, OpenAI>();
+export const RATE_LIMIT_COOLDOWN_MS = 60_000; // 60s cooldown before retrying an exhausted key
+
+/**
+ * Masks an API key for safe logging (e.g. "AIzaSy...4x8A")
+ */
+export function maskKey(key: string): string {
+  if (!key || key.length < 8) return '***';
+  return `${key.slice(0, 6)}...${key.slice(-4)}`;
+}
+
+/**
+ * Extracts and deduplicates all configured Google Gemini API keys.
+ * Supports:
+ * - GEMINI_API_KEYS="key1,key2,key3" (comma, semicolon, newline, or pipe separated)
+ * - GEMINI_API_KEY="key1,key2" or single "key1"
+ * - Numbered environment variables: GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc. (up to 20)
+ */
+export function getGeminiApiKeys(): string[] {
+  const rawEntries: string[] = [];
+
+  if (process.env.GEMINI_API_KEYS) {
+    rawEntries.push(...process.env.GEMINI_API_KEYS.split(/[\n,;|]+/));
   }
 
-  // Fallback to OpenAI
-  const openAiKey = process.env.OPENAI_API_KEY;
-  if (!openAiKey) {
-    throw new Error(
-      'Neither GEMINI_API_KEY nor OPENAI_API_KEY is set. AI draft generation is unavailable. ' +
-      'Set either GEMINI_API_KEY or OPENAI_API_KEY to enable this feature.'
+  if (process.env.GEMINI_API_KEY) {
+    rawEntries.push(...process.env.GEMINI_API_KEY.split(/[\n,;|]+/));
+  }
+
+  for (let i = 1; i <= 20; i++) {
+    const val = process.env[`GEMINI_API_KEY_${i}`];
+    if (val) {
+      rawEntries.push(...val.split(/[\n,;|]+/));
+    }
+  }
+
+  const unique = new Set<string>();
+  for (const raw of rawEntries) {
+    const trimmed = raw.trim();
+    if (
+      trimmed &&
+      trimmed.length >= 10 &&
+      !trimmed.includes('your-gemini-key-here') &&
+      !trimmed.includes('...')
+    ) {
+      unique.add(trimmed);
+    }
+  }
+
+  return Array.from(unique);
+}
+
+/**
+ * Returns current status of all Gemini keys (total, healthy, cooling down)
+ */
+export function getGeminiKeyStatus(): {
+  total: number;
+  healthy: number;
+  coolingDown: number;
+} {
+  const keys = getGeminiApiKeys();
+  const now = Date.now();
+  let coolingDown = 0;
+
+  for (const k of keys) {
+    const st = keyStateMap.get(k);
+    if (st && now - st.failedAt < RATE_LIMIT_COOLDOWN_MS) {
+      coolingDown++;
+    }
+  }
+
+  return {
+    total: keys.length,
+    healthy: keys.length - coolingDown,
+    coolingDown,
+  };
+}
+
+/**
+ * Resets the cooldown status for all keys (useful for manual sync or testing).
+ */
+export function resetGeminiKeyCooldowns(): void {
+  keyStateMap.clear();
+}
+
+/**
+ * Returns Gemini keys prioritized:
+ * 1. Healthy keys first
+ * 2. Keys in cooldown ordered by oldest failure (soonest to recover)
+ */
+export function getOrderedGeminiKeys(): string[] {
+  const keys = getGeminiApiKeys();
+  if (keys.length <= 1) return keys;
+
+  const now = Date.now();
+  return [...keys].sort((a, b) => {
+    const stateA = keyStateMap.get(a);
+    const stateB = keyStateMap.get(b);
+
+    const isCoolingA = stateA && now - stateA.failedAt < RATE_LIMIT_COOLDOWN_MS;
+    const isCoolingB = stateB && now - stateB.failedAt < RATE_LIMIT_COOLDOWN_MS;
+
+    if (!isCoolingA && isCoolingB) return -1;
+    if (isCoolingA && !isCoolingB) return 1;
+
+    // Both cooling or both healthy: oldest failedAt first
+    const timeA = stateA?.failedAt ?? 0;
+    const timeB = stateB?.failedAt ?? 0;
+    return timeA - timeB;
+  });
+}
+
+function getGeminiClient(apiKey: string): OpenAI {
+  let client = geminiClientCache.get(apiKey);
+  if (!client) {
+    client = new OpenAI({
+      apiKey,
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    });
+    geminiClientCache.set(apiKey, client);
+  }
+  return client;
+}
+
+/**
+ * Checks whether an error is a rate limit, quota exhaustion, or service overload
+ * that warrants immediately switching to the next backup API key.
+ */
+export function isFailoverError(err: unknown): boolean {
+  if (!err) return false;
+  const status =
+    (err as any)?.status ??
+    (err as any)?.statusCode ??
+    (err as any)?.response?.status;
+
+  if (status === 429 || status === 401 || status === 403 || status === 503) {
+    return true;
+  }
+
+  const msg = String(
+    (err as any)?.message ||
+      (err as any)?.error?.message ||
+      (err as any)?.code ||
+      ''
+  ).toLowerCase();
+
+  return (
+    msg.includes('429') ||
+    msg.includes('quota') ||
+    msg.includes('rate limit') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('resource exhausted') ||
+    msg.includes('too many requests') ||
+    msg.includes('limit reached') ||
+    msg.includes('exceeded your current quota') ||
+    msg.includes('tokens per minute') ||
+    msg.includes('requests per minute') ||
+    msg.includes('requests per day') ||
+    msg.includes('api_key_invalid') ||
+    msg.includes('invalid api key') ||
+    msg.includes('permission_denied') ||
+    msg.includes('overloaded') ||
+    msg.includes('capacity')
+  );
+}
+
+interface ChatCompletionParams {
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  max_tokens: number;
+  temperature: number;
+}
+
+/**
+ * Executes a chat completion with automatic multi-key failover:
+ * If a Gemini key hits quota / rate limits, it automatically rotates to the next key.
+ * If all Gemini keys fail and OpenAI is configured, falls back to OpenAI.
+ */
+async function executeChatCompletionWithFallback(
+  params: ChatCompletionParams
+): Promise<{
+  response: OpenAI.Chat.Completions.ChatCompletion;
+  model: string;
+  provider: 'gemini' | 'openai';
+  usedKeyMasked?: string;
+}> {
+  const geminiKeys = getOrderedGeminiKeys();
+  const geminiModel =
+    process.env.GEMINI_MODEL ??
+    process.env.OPENAI_MODEL ??
+    'gemini-3.5-flash-lite';
+
+  // 1. Attempt with Google Gemini keys in priority order
+  if (geminiKeys.length > 0) {
+    let lastGeminiError: any = null;
+
+    for (let i = 0; i < geminiKeys.length; i++) {
+      const key = geminiKeys[i];
+      const masked = maskKey(key);
+      const client = getGeminiClient(key);
+
+      try {
+        const response = await client.chat.completions.create({
+          model: geminiModel,
+          ...params,
+        });
+
+        // Key worked! Clear any previous failure state
+        if (keyStateMap.has(key)) {
+          keyStateMap.delete(key);
+        }
+
+        return {
+          response,
+          model: geminiModel,
+          provider: 'gemini',
+          usedKeyMasked: masked,
+        };
+      } catch (err: any) {
+        lastGeminiError = err;
+        const errMsg = err?.message || String(err);
+        const shouldFailover = isFailoverError(err);
+
+        // Mark key state with timestamp
+        const state = keyStateMap.get(key) || {
+          key,
+          failedAt: 0,
+          failCount: 0,
+        };
+        state.failedAt = Date.now();
+        state.failCount += 1;
+        state.lastError = errMsg;
+        keyStateMap.set(key, state);
+
+        const hasMoreKeys = i < geminiKeys.length - 1;
+        if (hasMoreKeys && shouldFailover) {
+          const nextMasked = maskKey(geminiKeys[i + 1]);
+          console.warn(
+            `[Gemini Multi-Key] Key #${i + 1} (${masked}) limit/error: "${errMsg}". ` +
+              `Switching to backup Key #${i + 2} (${nextMasked})...`
+          );
+          continue; // Try next Gemini key
+        } else if (!hasMoreKeys) {
+          console.error(
+            `[Gemini Multi-Key] All ${geminiKeys.length} Gemini API key(s) exhausted or failed. Last error: "${errMsg}".`
+          );
+        } else {
+          // Non-failover error (e.g. invalid request format), try next anyway
+          console.warn(
+            `[Gemini Multi-Key] Error with Key #${i + 1} (${masked}): "${errMsg}". Trying backup key...`
+          );
+          continue;
+        }
+      }
+    }
+
+    // If all Gemini keys failed, check for OpenAI safety fallback
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (openAiKey) {
+      console.warn(
+        '[AI Multi-Provider] All Gemini keys exhausted. Falling back to OpenAI as secondary provider...'
+      );
+      const openAiModel = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+      const openAiClient = new OpenAI({ apiKey: openAiKey });
+      const response = await openAiClient.chat.completions.create({
+        model: openAiModel,
+        ...params,
+      });
+      return { response, model: openAiModel, provider: 'openai' };
+    }
+
+    throw (
+      lastGeminiError ||
+      new Error(
+        `All ${geminiKeys.length} configured Gemini API key(s) hit their rate limit or failed.`
+      )
     );
   }
 
-  if (!_client || _currentProvider !== 'openai') {
-    _client = new OpenAI({ apiKey: openAiKey });
-    _currentProvider = 'openai';
+  // 2. No Gemini keys configured; check OpenAI
+  const openAiKey = process.env.OPENAI_API_KEY;
+  if (openAiKey) {
+    const openAiModel = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
+    const openAiClient = new OpenAI({ apiKey: openAiKey });
+    const response = await openAiClient.chat.completions.create({
+      model: openAiModel,
+      ...params,
+    });
+    return { response, model: openAiModel, provider: 'openai' };
   }
-  const model = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
-  return { client: _client, model };
+
+  throw new Error(
+    'Neither GEMINI_API_KEY nor OPENAI_API_KEY is configured. ' +
+      'Please set GEMINI_API_KEY in your environment to enable AI review draft generation.'
+  );
 }
 
-export const OPENAI_MODEL = process.env.GEMINI_API_KEY
-  ? (process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite')
-  : (process.env.OPENAI_MODEL ?? 'gpt-4o-mini');
+export const OPENAI_MODEL =
+  getGeminiApiKeys().length > 0
+    ? (process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite')
+    : (process.env.OPENAI_MODEL ?? 'gpt-4o-mini');
 
 // Cost per 1M tokens (approximate, update as pricing changes)
 const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
@@ -188,7 +461,6 @@ export async function generateReviewDrafts(
     options = optionsOrCustomContext;
   }
 
-  const { client, model } = getClient();
   const sentiment = STAR_SENTIMENTS[rating] ?? 'neutral';
 
   const categoryContext = businessCategory ? `Category: ${businessCategory}` : '';
@@ -282,8 +554,7 @@ Variety seed: ${variationSeed}
 
 Generate Draft 1 in ${lang1} (${lengthProfile.d1}) and Draft 2 in ${lang2} (${lengthProfile.d2}).`;
 
-  const response = await client.chat.completions.create({
-    model,
+  const { response, model } = await executeChatCompletionWithFallback({
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -347,7 +618,7 @@ function parseDrafts(content: string): [string, string] {
  * Checks if an AI provider API key (Google Gemini or OpenAI) is configured.
  */
 export function isOpenAIConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY);
+  return getGeminiApiKeys().length > 0 || Boolean(process.env.OPENAI_API_KEY);
 }
 
 export const isAIConfigured = isOpenAIConfigured;
