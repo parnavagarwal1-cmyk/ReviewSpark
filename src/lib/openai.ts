@@ -534,6 +534,10 @@ CRITICAL SINGLE-LANGUAGE RULE:
 - BOTH Draft 1 and Draft 2 MUST be written 100% in ${selectedLang.toUpperCase()} (${langDesc}).
 - Do NOT output two different languages. Both options must be in ${selectedLang}.
 
+CRITICAL SEO & GOOGLE MAPS RANKING RULE:
+- Naturally weave 1 or 2 of the provided "Service SEO Keywords" or local area landmarks into the sentences (e.g. naming the exact service received or neighborhood).
+- Keep it 100% conversational and authentic — never stuff keywords unnaturally.
+
 LENGTH: ~50 words each (approx 45–55 words, 3 to 4 full sentences). Do NOT make them short one-liners.
 Tone: ${sentiment} (${rating}/5 stars).
 Rules: Start directly with observations. Never use clichés ("I recently visited", "Top notch service"). ${emojiDirective}. No fake facts.`;
@@ -632,10 +636,14 @@ export function generateInstantFallbackDrafts(
   lang2 = 'Hinglish',
   options?: GenerateDraftOptions
 ): [string, string] {
-  const highlights = options?.selectedTags?.join(', ') || options?.selectedAspects?.join(', ') || '';
+  const attemptSeed = options?.attempt ?? Math.floor(Math.random() * 100);
+  const kwList = options?.serviceKeywords
+    ? options.serviceKeywords.split(/[,|;]+/).map((k) => k.trim()).filter(Boolean)
+    : [];
+  const primaryKw = kwList.length > 0 ? kwList[Math.abs(attemptSeed) % kwList.length] : '';
+  const highlights = primaryKw || options?.selectedTags?.join(', ') || options?.selectedAspects?.join(', ') || '';
   const isHinglish =
     (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
-  const attemptSeed = options?.attempt ?? Math.floor(Math.random() * 100);
 
   if (rating >= 4) {
     const enOptions = [
