@@ -525,6 +525,7 @@ export async function generateReviewDrafts(
   const variationSeed = Math.random().toString(36).substring(2, 8);
 
   const systemPrompt = `You are an authentic Google Review writer for Indian local businesses.
+${stylePerspective}
 Write EXACTLY 2 distinct, human review options in ${selectedLang}:
 - "Draft 1:" around 45–55 words (3–4 full sentences) in ${selectedLang}.
 - "Draft 2:" around 45–55 words (3–4 full sentences) in ${selectedLang} (an alternative phrasing and angle).
@@ -545,6 +546,7 @@ ${highlightsContext}
 ${aspectsContext}
 ${tagsContext}
 ${customerNoteContext}
+Perspective / Angle: ${stylePerspective}
 Rating: ${rating}/5 stars (${sentiment})
 Requested Language: ${selectedLang}
 Rewrite Attempt: ${options.attempt ?? 1}
@@ -605,10 +607,11 @@ function pickTwoDistinct<T>(arr: T[], seed?: number): [T, T] {
 
   if (typeof seed === 'number' && Number.isFinite(seed) && seed > 0) {
     const s = Math.abs(Math.floor(seed));
-    i1 = s % arr.length;
-    // Ensure second index is always different from i1
-    const offset = 1 + (Math.floor(s / arr.length) % (arr.length - 1));
-    i2 = (i1 + offset) % arr.length;
+    const cycle = Math.floor(s / Math.max(1, Math.floor(arr.length / 2)));
+    const step = cycle % 2 === 0 ? 2 : 3;
+    i1 = (s * step) % arr.length;
+    i2 = (i1 + 1 + (cycle % (arr.length - 1))) % arr.length;
+    if (i2 === i1) i2 = (i1 + 1) % arr.length;
   } else {
     i1 = Math.floor(Math.random() * arr.length);
     i2 = Math.floor(Math.random() * (arr.length - 1));
