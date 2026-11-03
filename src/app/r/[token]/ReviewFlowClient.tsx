@@ -148,12 +148,14 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     setSelectedDraftIndex(index);
     setEditedDraft(drafts![index]);
     setEditingIndex(null);
-    if (carouselRef.current?.children[index]) {
-      (carouselRef.current.children[index] as HTMLElement).scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'start',
-      });
+    if (carouselRef.current) {
+      const targetChild = carouselRef.current.children[index] as HTMLElement | undefined;
+      if (targetChild) {
+        carouselRef.current.scrollTo({
+          left: targetChild.offsetLeft - carouselRef.current.offsetLeft,
+          behavior: 'smooth',
+        });
+      }
     }
   }
 
@@ -414,6 +416,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                       id={`star-${star}`}
                     >
                       <svg
+                        className="star-svg"
                         width="38"
                         height="38"
                         viewBox="0 0 24 24"
@@ -684,9 +687,12 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   onScroll={(e) => {
                     const el = e.currentTarget;
                     if (el.scrollWidth > el.clientWidth) {
-                      const idx = el.scrollLeft > el.clientWidth * 0.4 ? 1 : 0;
+                      const firstCard = el.children[0] as HTMLElement | undefined;
+                      const cardW = firstCard?.offsetWidth || el.clientWidth * 0.85;
+                      const gap = 14;
+                      const idx = Math.min(1, Math.max(0, Math.round(el.scrollLeft / (cardW + gap)))) as 0 | 1;
                       if (idx !== selectedDraftIndex && drafts?.[idx]) {
-                        setSelectedDraftIndex(idx as 0 | 1);
+                        setSelectedDraftIndex(idx);
                         setEditedDraft(drafts[idx]);
                         setEditingIndex(null);
                       }

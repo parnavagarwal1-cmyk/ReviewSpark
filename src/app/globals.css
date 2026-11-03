@@ -1011,6 +1011,7 @@ tbody td {
 /* ── Public Review Page (Dark Luxury Theme as per screenshot) ─────────────── */
 .public-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #090a16;
   background-image:
     radial-gradient(circle at 50% -5%, rgba(124, 58, 237, 0.28) 0%, rgba(99, 102, 241, 0.12) 40%, transparent 75%),
@@ -1020,9 +1021,11 @@ tbody td {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 1rem 3rem;
+  padding: max(1.25rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) max(2.5rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-left));
   font-family: var(--font-sans);
   color: #ffffff;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .review-container {
@@ -1030,7 +1033,8 @@ tbody td {
   max-width: 440px;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
+  margin: 0 auto;
 }
 
 /* Business Identity Row */
@@ -1525,12 +1529,14 @@ tbody td {
 /* Review Cards Carousel */
 .rb-carousel-track {
   display: flex;
-  gap: 0.875rem;
+  gap: 0.85rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   padding: 0.25rem 0.15rem 0.5rem;
   scrollbar-width: none;
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
 }
 
 .rb-carousel-track::-webkit-scrollbar {
@@ -1538,17 +1544,19 @@ tbody td {
 }
 
 .rb-review-card {
-  flex: 0 0 88%;
-  min-width: 88%;
-  max-width: 88%;
+  flex: 0 0 85%;
+  min-width: 85%;
+  max-width: 85%;
   scroll-snap-align: start;
   background: #121326;
   border: 1.5px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  padding: 1.25rem;
+  padding: 1.25rem 1.15rem;
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   position: relative;
+  touch-action: pan-y manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .rb-review-card.active {
@@ -1590,11 +1598,13 @@ tbody td {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
-  padding: 0.2rem 0.65rem;
+  padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 600;
   color: #cbd0e2;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: all 0.15s ease;
 }
 
@@ -1602,6 +1612,10 @@ tbody td {
   background: rgba(99, 102, 241, 0.2);
   color: #ffffff;
   border-color: #6366f1;
+}
+
+.rb-edit-pill:active {
+  transform: scale(0.94);
 }
 
 .rb-card-divider {
@@ -1615,20 +1629,22 @@ tbody td {
   line-height: 1.65;
   color: #e2e8f0;
   margin: 0;
+  word-break: break-word;
 }
 
 .rb-card-textarea {
   width: 100%;
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(99, 102, 241, 0.4);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.75rem;
-  font-size: 0.95rem;
-  line-height: 1.65;
+  font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+  line-height: 1.6;
   color: #ffffff;
   font-family: inherit;
   resize: vertical;
   outline: none;
+  touch-action: manipulation;
 }
 
 /* Shimmer placeholder during Rewrite */
@@ -1684,7 +1700,8 @@ tbody td {
 /* Main Copy & Continue Green Button */
 .rb-btn-copy-continue {
   width: 100%;
-  padding: 1.05rem 1.5rem;
+  min-height: 54px;
+  padding: 1rem 1.5rem;
   background: #00d26a;
   border: none;
   border-radius: 9999px;
@@ -1694,11 +1711,15 @@ tbody td {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
+  gap: 0.65rem;
   cursor: pointer;
   box-shadow: 0 8px 30px rgba(0, 210, 106, 0.4);
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   margin-top: 0.5rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .rb-btn-copy-continue:hover {
@@ -1708,7 +1729,137 @@ tbody td {
 }
 
 .rb-btn-copy-continue:active {
-  transform: translateY(0);
+  transform: scale(0.97);
+  box-shadow: 0 4px 14px rgba(0, 210, 106, 0.3);
+  background: #00bf60;
+}
+
+/* ── Mobile Phone Screen Optimizations (<= 480px) ───────────────── */
+@media (max-width: 480px) {
+  .public-page {
+    padding: max(0.9rem, env(safe-area-inset-top)) 0.75rem max(2rem, env(safe-area-inset-bottom)) 0.75rem;
+    align-items: flex-start;
+  }
+
+  .review-container {
+    gap: 0.95rem;
+  }
+
+  .review-top-identity {
+    gap: 0.75rem;
+    padding: 0.2rem 0;
+  }
+
+  .review-avatar {
+    width: 46px;
+    height: 46px;
+    font-size: 1.2rem;
+  }
+
+  .review-identity-name {
+    font-size: 1.15rem;
+  }
+
+  .rb-google-card {
+    padding: 1.25rem 0.95rem;
+    border-radius: 18px;
+  }
+
+  .rb-google-logo {
+    font-size: 2.15rem;
+  }
+
+  .rb-google-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+  }
+
+  .stars-row {
+    gap: 0.2rem;
+  }
+
+  .star-btn {
+    padding: 0.25rem;
+    min-width: 42px;
+    min-height: 42px;
+  }
+
+  .star-btn svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .rb-rating-row {
+    padding: 0;
+    gap: 0.4rem;
+  }
+
+  .rb-stars {
+    font-size: 1.05rem;
+    letter-spacing: 1.5px;
+  }
+
+  .rb-rating-label {
+    font-size: 0.9rem;
+  }
+
+  .rb-change-btn {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .rb-carousel-track {
+    gap: 0.75rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .rb-review-card {
+    flex: 0 0 85%;
+    min-width: 85%;
+    max-width: 85%;
+    padding: 1.15rem 0.95rem;
+    border-radius: 18px;
+  }
+
+  .rb-card-text {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .rb-card-top {
+    margin-bottom: 0.75rem;
+  }
+
+  .rb-btn-copy-continue {
+    min-height: 52px;
+    padding: 0.95rem 1.25rem;
+    font-size: 1.02rem;
+  }
+}
+
+/* ── Small Mobile Screens (<= 360px, e.g. iPhone SE / small Android) ── */
+@media (max-width: 360px) {
+  .public-page {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .rb-review-card {
+    flex: 0 0 86%;
+    min-width: 86%;
+    max-width: 86%;
+    padding: 1rem 0.85rem;
+  }
+
+  .star-btn svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .rb-google-logo {
+    font-size: 1.95rem;
+  }
 }
 
 /* Legacy support / buttons */
