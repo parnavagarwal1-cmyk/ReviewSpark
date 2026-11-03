@@ -23,6 +23,14 @@ const STAR_LABELS: Record<number, string> = {
   5: 'Excellent!',
 };
 
+const STAR_EMOJIS: Record<number, string> = {
+  1: '😞 Terrible',
+  2: '😕 Poor',
+  3: '😐 Average',
+  4: '😊 Good',
+  5: '🤩 Excellent',
+};
+
 type Step = 'loading' | 'error' | 'select-rating' | 'generating' | 'select-draft' | 'continue';
 
 export default function ReviewFlowClient({ token }: { token: string }) {
@@ -33,6 +41,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   const [selectedRating, setSelectedRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [customerNote, setCustomerNote] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<'English' | 'Hinglish'>('English');
 
   // Selected Aspects and Tags
   const [selectedAspects, setSelectedAspects] = useState<string[]>([]);
@@ -40,6 +49,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
 
   const [drafts, setDrafts] = useState<[string, string] | null>(null);
   const [selectedDraftIndex, setSelectedDraftIndex] = useState<0 | 1>(0);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editedDraft, setEditedDraft] = useState('');
   const [generateError, setGenerateError] = useState('');
   const [aiUnavailable, setAiUnavailable] = useState(false);
@@ -47,6 +57,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   // Load business context
   useEffect(() => {
@@ -81,7 +92,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     );
   }
 
-  async function handleGenerate(ratingToUse = selectedRating) {
+  async function handleGenerate(ratingToUse = selectedRating, langToUse = selectedLanguage) {
     if (!ratingToUse) return;
     setDrafts(null);
     setEditedDraft('');
@@ -98,6 +109,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           customer_note: customerNote.trim() || undefined,
           selected_aspects: selectedAspects,
           selected_tags: selectedTags,
+          selected_language: langToUse,
         }),
       });
 
@@ -118,6 +130,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
       setDrafts(data.drafts);
       setSelectedDraftIndex(0);
       setEditedDraft(data.drafts[0]);
+      setEditingIndex(null);
       setStep('select-draft');
     } catch {
       setGenerateError('Network error. Please try again.');
@@ -127,13 +140,52 @@ export default function ReviewFlowClient({ token }: { token: string }) {
 
   function handleRatingClick(star: number) {
     setSelectedRating(star);
-    // Reset tags when rating changes to match the new star level
     setSelectedTags([]);
   }
 
   function handleSelectDraft(index: 0 | 1) {
     setSelectedDraftIndex(index);
     setEditedDraft(drafts![index]);
+    setEditingIndex(null);
+    if (carouselRef.current?.children[index]) {
+      (carouselRef.current.children[index] as HTMLElement).scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start',
+      });
+    }
+  }
+
+  async function handleLanguageChange(newLang: 'English' | 'Hinglish') {
+    if (newLang === selectedLanguage || isRegenerating) return;
+    setSelectedLanguage(newLang);
+    setIsRegenerating(true);
+    try {
+      const res = await fetch('/api/review/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          rating: selectedRating,
+          customer_note: customerNote.trim() || undefined,
+          selected_aspects: selectedAspects,
+          selected_tags: selectedTags,
+          selected_language: newLang,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.drafts) {
+        setDrafts(data.drafts);
+        setSelectedDraftIndex(0);
+        setEditedDraft(data.drafts[0]);
+        setEditingIndex(null);
+      }
+    } catch {
+      // keep existing
+    } finally {
+      setIsRegenerating(false);
+    }
   }
 
   async function handleRegenerate() {
@@ -149,6 +201,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           customer_note: customerNote.trim() || undefined,
           selected_aspects: selectedAspects,
           selected_tags: selectedTags,
+          selected_language: selectedLanguage,
         }),
       });
 
@@ -156,6 +209,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
       if (res.ok && data.drafts) {
         setDrafts(data.drafts);
         setEditedDraft(data.drafts[selectedDraftIndex]);
+        setEditingIndex(null);
       }
     } catch {
       // keep existing drafts
@@ -164,36 +218,37 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     }
   }
 
-  async function handleCopy() {
+  async function handleCopyAndContinue() {
+    const textToCopy = editedDraft.trim() || drafts?.[selectedDraftIndex] || '';
+    if (!textToCopy) return;
+
     try {
-      await navigator.clipboard.writeText(editedDraft);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
-
-      // Record copy event
-      fetch('/api/analytics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, event_type: 'copy_click', rating: selectedRating }),
-      }).catch(() => {});
-    } catch {
-      // Fallback
+    } catch (err) {
+      console.warn('Clipboard write error:', err);
     }
-  }
 
-  function handleContinueToGoogle() {
-    if (!context?.google_review_destination) return;
+    // Record events (fire and forget)
+    fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, event_type: 'copy_click', rating: selectedRating }),
+    }).catch(() => {});
 
-    // Record continue event
     fetch('/api/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, event_type: 'continue_to_google', rating: selectedRating }),
     }).catch(() => {});
 
-    // Open Google review page in new tab
-    window.open(context.google_review_destination, '_blank', 'noopener,noreferrer');
+    // Open Google Review destination in new tab
+    if (context?.google_review_destination) {
+      window.open(context.google_review_destination, '_blank', 'noopener,noreferrer');
+    }
+
     setStep('continue');
   }
 
@@ -246,31 +301,42 @@ export default function ReviewFlowClient({ token }: { token: string }) {
             </div>
           </div>
 
-          <div className="review-google-hero-card" style={{ textAlign: 'center' }}>
+          <div className="rb-google-card">
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
             <h2 style={{ fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem', fontSize: '1.25rem' }}>
-              Thank You!
+              Review Copied to Clipboard!
             </h2>
             <p style={{ color: '#8e93a7', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              Google should have opened in a new tab. Paste your review text there and submit!
+              Google Maps was opened in a new tab. Simply paste your review there and tap Post!
             </p>
             <button
-              className="btn-generate-active"
-              onClick={handleContinueToGoogle}
+              className="rb-btn-copy-continue"
+              onClick={() => {
+                if (context?.google_review_destination) {
+                  window.open(context.google_review_destination, '_blank', 'noopener,noreferrer');
+                }
+              }}
               id="retry-google-btn"
             >
-              ↗ Open Google Again
+              <span>↗ Open Google Maps Again</span>
             </button>
             <button
               className="btn-public-copy"
-              style={{ marginTop: '0.75rem', width: '100%' }}
-              onClick={handleCopy}
+              style={{ marginTop: '0.85rem', width: '100%' }}
+              onClick={async () => {
+                const text = editedDraft || drafts?.[selectedDraftIndex] || '';
+                if (text) {
+                  await navigator.clipboard.writeText(text);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }
+              }}
               id="copy-review-again-btn"
             >
-              {copied ? '✓ Copied!' : '📋 Copy Review Text Again'}
+              {copied ? '✓ Copied to Clipboard!' : '📋 Copy Review Text Again'}
             </button>
             <p style={{ color: '#686d85', fontSize: '0.75rem', marginTop: '1.25rem' }}>
-              Your review has NOT been submitted yet. Please paste it on Google and click Post.
+              Your review is not posted automatically. Please paste and submit on Google Maps.
             </p>
           </div>
 
@@ -278,7 +344,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           <div className="review-powered-by">
             <span>Powered by</span>
             <span className="spark-logo-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#6366f1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#10b981">
                 <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
               </svg>
               ReviewSpark
@@ -309,9 +375,9 @@ export default function ReviewFlowClient({ token }: { token: string }) {
         {(step === 'select-rating' || step === 'generating') && (
           <>
             {/* Center Google Hero Card */}
-            <div className="review-google-hero-card">
-              <div className="review-hero-label">YOUR REVIEW WILL BE POSTED ON</div>
-              <div className="review-hero-google" aria-label="Google">
+            <div className="rb-google-card">
+              <div className="rb-google-label">YOUR REVIEW WILL BE POSTED ON</div>
+              <div className="rb-google-logo" aria-label="Google">
                 <span style={{ color: '#4285F4' }}>G</span>
                 <span style={{ color: '#EA4335' }}>o</span>
                 <span style={{ color: '#FBBC05' }}>o</span>
@@ -319,64 +385,79 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                 <span style={{ color: '#34A853' }}>l</span>
                 <span style={{ color: '#EA4335' }}>e</span>
               </div>
-              <div className="review-hero-sub">Takes only 10 seconds</div>
-            </div>
+              <div className="rb-google-sub">Takes only 10 seconds</div>
 
-            {/* Experience & Star Rating Section */}
-            <div className="review-experience-section">
-              <h2 className="review-experience-title">
-                {step === 'generating' ? 'Generating AI review drafts…' : 'How was your experience?'}
-              </h2>
+              {/* Stars Container */}
+              <div className="review-experience-section">
+                <p className="review-experience-title">How was your experience?</p>
 
-              {/* 5-Star Row */}
-              <div className="stars-row" role="radiogroup" aria-label="Star rating">
-                {[1, 2, 3, 4, 5].map((star) => {
-                  const isFilled = star <= (hoverRating || selectedRating);
-                  return (
+                <div className="stars-row" role="radiogroup" aria-label="Rating">
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
-                      className={`star-btn ${isFilled ? 'filled' : ''}`}
-                      onClick={() => step === 'select-rating' && handleRatingClick(star)}
-                      onMouseEnter={() => step === 'select-rating' && setHoverRating(star)}
-                      onMouseLeave={() => step === 'select-rating' && setHoverRating(0)}
-                      disabled={step === 'generating'}
+                      type="button"
                       role="radio"
-                      aria-checked={star === selectedRating}
-                      aria-label={`${star} star${star !== 1 ? 's' : ''}`}
-                      id={`star-btn-${star}`}
+                      aria-checked={selectedRating === star}
+                      aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                      onClick={() => handleRatingClick(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      className="star-btn"
+                      id={`star-${star}`}
                     >
                       <svg
-                        width="44"
-                        height="44"
+                        width="38"
+                        height="38"
                         viewBox="0 0 24 24"
-                        fill={isFilled ? '#f59e0b' : 'none'}
-                        stroke={isFilled ? '#f59e0b' : '#32344f'}
+                        fill={(hoverRating || selectedRating) >= star ? '#6366f1' : 'none'}
+                        stroke={(hoverRating || selectedRating) >= star ? '#6366f1' : '#454862'}
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         style={{
+                          filter: (hoverRating || selectedRating) >= star ? 'drop-shadow(0 0 8px rgba(99,102,241,0.6))' : 'none',
                           transition: 'all 0.15s ease',
-                          filter: isFilled ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.5))' : 'none',
-                          transform: isFilled ? 'scale(1.08)' : 'scale(1)',
                         }}
                       >
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                       </svg>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
+
+                {/* Feedback label */}
+                {selectedRating > 0 && (
+                  <div style={{ marginTop: '0.75rem', fontSize: '0.95rem', color: '#818cf8', fontWeight: 700 }}>
+                    {STAR_EMOJIS[hoverRating || selectedRating]}
+                  </div>
+                )}
               </div>
 
-              {/* Feedback text */}
-              {selectedRating > 0 && (
-                <div style={{ marginTop: '0.65rem', fontSize: '0.85rem', color: '#a0a5bc', fontWeight: 500 }}>
-                  {STAR_LABELS[hoverRating || selectedRating]}
-                </div>
-              )}
-
-              {/* Aspects & Tags & Note (when rating selected) */}
+              {/* Customization Options when star clicked */}
               {selectedRating > 0 && step === 'select-rating' && (
                 <div className="review-customization-box">
+                  
+                  {/* Language Selector in Rating Screen */}
+                  <div>
+                    <span className="box-section-title">🌐 Review Language:</span>
+                    <div className="chips-row">
+                      <button
+                        type="button"
+                        className={`custom-chip ${selectedLanguage === 'English' ? 'selected' : ''}`}
+                        onClick={() => setSelectedLanguage('English')}
+                      >
+                        🇬🇧 English
+                      </button>
+                      <button
+                        type="button"
+                        className={`custom-chip ${selectedLanguage === 'Hinglish' ? 'selected' : ''}`}
+                        onClick={() => setSelectedLanguage('Hinglish')}
+                      >
+                        🇮🇳 Hinglish
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Aspects Selection (if enabled) */}
                   {context?.show_aspects !== false && context?.aspects && context.aspects.length > 0 && (
                     <div>
@@ -453,7 +534,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   className="btn-rate-to-continue"
                   disabled
                 >
-                  <span style={{ color: '#f59e0b' }}>★</span> Rate to continue
+                  <span style={{ color: '#6366f1' }}>★</span> Rate to continue
                 </button>
               ) : (
                 <button
@@ -465,10 +546,10 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                   {step === 'generating' ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                       <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-                      Drafting English &amp; Hinglish reviews…
+                      Drafting {selectedLanguage} reviews…
                     </span>
                   ) : (
-                    '✨ Continue to Review (English & Hinglish)'
+                    `✨ Generate Review (${selectedLanguage}) →`
                   )}
                 </button>
               )}
@@ -476,166 +557,213 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           </>
         )}
 
-        {/* Step: Select & Edit Draft */}
+        {/* ── Step: Select & Edit Draft (Exact ReviewBro UI from screenshot) ── */}
         {step === 'select-draft' && (
-          <div className="review-google-hero-card" style={{ textAlign: 'left', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.25rem', color: '#f59e0b' }}>
+          <div className="rb-review-wrapper">
+
+            {/* Top Card: YOUR REVIEW WILL BE POSTED ON + Google Logo + Takes only 10 seconds */}
+            <div className="rb-google-card">
+              <div className="rb-google-label">YOUR REVIEW WILL BE POSTED ON</div>
+              <div className="rb-google-logo" aria-label="Google">
+                <span style={{ color: '#4285F4' }}>G</span>
+                <span style={{ color: '#EA4335' }}>o</span>
+                <span style={{ color: '#FBBC05' }}>o</span>
+                <span style={{ color: '#4285F4' }}>g</span>
+                <span style={{ color: '#34A853' }}>l</span>
+                <span style={{ color: '#EA4335' }}>e</span>
+              </div>
+              <div className="rb-google-sub">Takes only 10 seconds</div>
+            </div>
+
+            {/* Rating Row: ★★★★★ 🤩 Excellent [ ✎ Change ] */}
+            <div className="rb-rating-row">
+              <div className="rb-rating-stars-group">
+                <span className="rb-stars">
                   {'★'.repeat(selectedRating)}{'☆'.repeat(5 - selectedRating)}
                 </span>
-                <span style={{ color: '#a0a5bc', fontSize: '0.85rem', fontWeight: 500 }}>
-                  {STAR_LABELS[selectedRating]}
+                <span className="rb-rating-label">
+                  {STAR_EMOJIS[selectedRating] || '🤩 Excellent'}
                 </span>
               </div>
+
               <button
-                style={{ fontSize: '0.78rem', color: '#818cf8', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                onClick={() => { setStep('select-rating'); }}
+                type="button"
+                className="rb-change-btn"
+                onClick={() => setStep('select-rating')}
+                id="change-rating-btn"
               >
-                Change Rating
+                ✎ Change
               </button>
             </div>
 
+            {/* Language Selector: Generates in ONE chosen language */}
+            <div className="rb-lang-row">
+              <span className="rb-lang-title">🌐 Language:</span>
+              <div className="rb-lang-pills">
+                <button
+                  type="button"
+                  className={`rb-lang-pill ${selectedLanguage === 'English' ? 'active' : ''}`}
+                  onClick={() => handleLanguageChange('English')}
+                  disabled={isRegenerating}
+                >
+                  🇬🇧 English
+                </button>
+                <button
+                  type="button"
+                  className={`rb-lang-pill ${selectedLanguage === 'Hinglish' ? 'active' : ''}`}
+                  onClick={() => handleLanguageChange('Hinglish')}
+                  disabled={isRegenerating}
+                >
+                  🇮🇳 Hinglish
+                </button>
+              </div>
+            </div>
+
+            {/* Section Header: YOUR REVIEW + Rewrite button */}
+            <div className="rb-section-header">
+              <span className="rb-section-title">YOUR REVIEW</span>
+              <button
+                type="button"
+                className="rb-rewrite-btn"
+                onClick={handleRegenerate}
+                disabled={isRegenerating}
+                id="rewrite-btn"
+              >
+                {isRegenerating ? (
+                  <>
+                    <span className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} />
+                    <span>Rewriting…</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔄</span>
+                    <span>Rewrite</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Review Cards Carousel */}
             {aiUnavailable || !drafts ? (
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', fontSize: '0.85rem', color: '#fbbf24', marginBottom: '1rem' }}>
-                  ✍️ AI suggestions unavailable. Write your own review below.
+              <div className="rb-review-card active">
+                <div className="rb-card-top">
+                  <div className="rb-card-badge">
+                    <span className="rb-card-dot" />
+                    <span>MANUAL REVIEW</span>
+                  </div>
                 </div>
-                <div className="dark-draft-card selected">
-                  <textarea
-                    className="dark-draft-textarea"
-                    value={editedDraft}
-                    onChange={(e) => setEditedDraft(e.target.value)}
-                    placeholder="Write your review here…"
-                    rows={4}
-                    aria-label="Write your review"
-                    id="manual-review-textarea"
-                  />
-                </div>
+                <div className="rb-card-divider" />
+                <textarea
+                  className="rb-card-textarea"
+                  value={editedDraft}
+                  onChange={(e) => setEditedDraft(e.target.value)}
+                  placeholder="Write your review here…"
+                  rows={4}
+                  id="manual-review-textarea"
+                />
               </div>
             ) : (
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#8c90a4', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>
-                    🤖 Pick Your Language
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating}
-                    title="Generate completely new reviews with different style and length"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      color: '#a5b4fc',
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      border: '1px solid rgba(99, 102, 241, 0.3)',
-                      borderRadius: '12px',
-                      padding: '3px 10px',
-                      cursor: isRegenerating ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {isRegenerating ? (
-                      <>
-                        <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
-                        Fresh ideas…
-                      </>
-                    ) : (
-                      <>🔄 Fresh Ideas</>
-                    )}
-                  </button>
-                </div>
+              <>
+                <div
+                  ref={carouselRef}
+                  className="rb-carousel-track"
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    if (el.scrollWidth > el.clientWidth) {
+                      const idx = el.scrollLeft > el.clientWidth * 0.4 ? 1 : 0;
+                      if (idx !== selectedDraftIndex && drafts?.[idx]) {
+                        setSelectedDraftIndex(idx as 0 | 1);
+                        setEditedDraft(drafts[idx]);
+                        setEditingIndex(null);
+                      }
+                    }
+                  }}
+                >
+                  {drafts.map((draft, idx) => {
+                    const isActive = selectedDraftIndex === idx;
+                    const isEditing = editingIndex === idx;
 
-                {drafts.map((draft, i) => {
-                  const isEnglish = i === 0;
-                  const isSelected = selectedDraftIndex === i;
-                  return (
-                    <div
-                      key={i}
-                      className={`dark-draft-card ${isSelected ? 'selected' : ''}`}
-                      onClick={() => handleSelectDraft(i as 0 | 1)}
-                      id={`draft-option-${i}`}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span
-                          style={{
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            color: isSelected ? '#a5b4fc' : '#8c90a4',
-                          }}
-                        >
-                          Draft {i + 1} ({isEnglish ? 'English' : 'Hinglish'})
-                        </span>
-                        <span
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                            background: isEnglish ? 'rgba(79, 70, 229, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                            color: isEnglish ? '#c7d2fe' : '#fde68a',
-                            fontWeight: 600,
-                          }}
-                        >
-                          {isEnglish ? '🇬🇧 English' : '🇮🇳 Hinglish'}
-                        </span>
+                    return (
+                      <div
+                        key={idx}
+                        className={`rb-review-card ${isActive ? 'active' : ''}`}
+                        onClick={() => handleSelectDraft(idx as 0 | 1)}
+                        id={`draft-option-${idx}`}
+                      >
+                        <div className="rb-card-top">
+                          <div className="rb-card-badge">
+                            <span className="rb-card-dot" />
+                            <span>REVIEW {idx + 1}</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="rb-edit-pill"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isActive) {
+                                handleSelectDraft(idx as 0 | 1);
+                              }
+                              setEditingIndex(isEditing ? null : idx);
+                            }}
+                          >
+                            ✎ {isEditing ? 'Save' : 'Edit'}
+                          </button>
+                        </div>
+
+                        <div className="rb-card-divider" />
+
+                        {isEditing ? (
+                          <textarea
+                            className="rb-card-textarea"
+                            value={editedDraft}
+                            onChange={(e) => setEditedDraft(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            rows={4}
+                            aria-label={`Edit review option ${idx + 1}`}
+                            id={`draft-edit-${idx}`}
+                          />
+                        ) : (
+                          <p className="rb-card-text">
+                            {isActive ? editedDraft : draft}
+                          </p>
+                        )}
                       </div>
-
-                      {isSelected ? (
-                        <textarea
-                          className="dark-draft-textarea"
-                          value={editedDraft}
-                          onChange={(e) => setEditedDraft(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          rows={Math.max(3, Math.ceil(editedDraft.length / 50))}
-                          aria-label={`Edit draft option ${i + 1}`}
-                          id={`draft-edit-${i}`}
-                        />
-                      ) : (
-                        <p className="dark-draft-text">{draft}</p>
-                      )}
-                    </div>
-                  );
-                })}
-
-                <div style={{ fontSize: '0.75rem', color: '#686d85', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.75rem' }}>
-                  <span>ℹ️</span>
-                  <span>Feel free to tap and edit anything before posting!</span>
+                    );
+                  })}
                 </div>
-              </div>
+
+                {/* Pagination Dots underneath carousel */}
+                <div className="rb-pagination">
+                  {drafts.map((_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={`rb-page-dot ${selectedDraftIndex === idx ? 'active' : ''}`}
+                      onClick={() => handleSelectDraft(idx as 0 | 1)}
+                      aria-label={`Select Review ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
             )}
 
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
-              <button
-                className={`btn-public-copy ${copied ? 'copied' : ''}`}
-                onClick={handleCopy}
-                disabled={!editedDraft.trim()}
-                id="copy-draft-btn"
-              >
-                {copied ? '✓ Copied to Clipboard!' : '📋 1-Click Copy Review'}
-              </button>
-            </div>
-
+            {/* Main Action Button: Big Green Pill "Copy & continue" */}
             <button
-              className="btn-generate-active"
-              style={{ marginTop: '0.75rem', width: '100%' }}
-              onClick={handleContinueToGoogle}
-              id="continue-to-google-btn"
+              type="button"
+              className="rb-btn-copy-continue"
+              onClick={handleCopyAndContinue}
+              id="copy-and-continue-btn"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
-              Continue to Google Review →
+              <span>{copied ? '✓ Copied! Opening Google…' : 'Copy & continue'}</span>
             </button>
 
-            <p style={{ textAlign: 'center', fontSize: '0.72rem', color: '#686d85', marginTop: '0.75rem' }}>
-              Click &quot;Copy&quot; above, then paste into Google Maps and hit Post!
+            <p style={{ textAlign: 'center', fontSize: '0.72rem', color: '#686d85', margin: '0.25rem 0 0' }}>
+              Tap above to copy text &amp; continue directly to Google Maps!
             </p>
           </div>
         )}
@@ -644,7 +772,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
         <div className="review-powered-by">
           <span>Powered by</span>
           <span className="spark-logo-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#6366f1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#10b981">
               <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
             </svg>
             ReviewSpark

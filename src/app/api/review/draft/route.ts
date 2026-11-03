@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     customer_note?: string;
     selected_aspects?: string[];
     selected_tags?: string[];
+    selected_language?: string;
   };
   try {
     body = await request.json();
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { token, rating, customer_note, selected_aspects, selected_tags } = body;
+  const { token, rating, customer_note, selected_aspects, selected_tags, selected_language } = body;
 
   if (!token || typeof token !== 'string' || token.length > 50) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
@@ -179,6 +180,7 @@ export async function POST(request: NextRequest) {
     street,
     primaryLanguage: primaryLang || 'English',
     secondaryLanguage: secondaryLang || 'Hinglish',
+    selectedLanguage: selected_language || undefined,
   };
 
   // ── Generate drafts ───────────────────────────────────────────────────────

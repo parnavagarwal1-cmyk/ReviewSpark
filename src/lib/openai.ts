@@ -439,6 +439,7 @@ export interface GenerateDraftOptions {
   street?: string | null;
   primaryLanguage?: string | null;
   secondaryLanguage?: string | null;
+  selectedLanguage?: string | null;
 }
 
 /**
@@ -505,8 +506,15 @@ export async function generateReviewDrafts(
     ? `Customer Personal Note: "${options.customerNote.trim()}"`
     : '';
 
-  const lang1 = options.primaryLanguage?.trim() || 'English';
-  const lang2 = options.secondaryLanguage?.trim() || 'Hinglish (conversational Hindi + English blend in Roman script)';
+  const selectedLang = (options.selectedLanguage || options.primaryLanguage || 'English').trim();
+  const isHinglish = selectedLang.toLowerCase().includes('hinglish');
+  const isHindi = selectedLang.toLowerCase() === 'hindi' || selectedLang.toLowerCase().includes('हिंदी');
+
+  const langDesc = isHinglish
+    ? 'conversational Hinglish (Hindi + English blend in Roman script, e.g. "Service bohot acchi thi aur staff kaafi cooperative tha...")'
+    : isHindi
+    ? 'Hindi in Devanagari script'
+    : 'natural fluent English';
 
   const stylePerspective =
     STYLE_PERSPECTIVES[Math.floor(Math.random() * STYLE_PERSPECTIVES.length)];
@@ -516,13 +524,15 @@ export async function generateReviewDrafts(
   const variationSeed = Math.random().toString(36).substring(2, 8);
 
   const systemPrompt = `You are an authentic Google Review writer for Indian local businesses.
-Write EXACTLY 2 distinct, human review drafts:
-- "Draft 1:" in natural ${lang1} (${lengthProfile.d1}).
-- "Draft 2:" in conversational ${lang2} (${lengthProfile.d2}) in Roman script (e.g. "Staff kaafi polite tha aur service bohot acchi lagi...").
+Write EXACTLY 2 distinct, human review options in ${selectedLang}:
+- "Draft 1:" around 45–55 words (3–4 full sentences) in ${selectedLang}.
+- "Draft 2:" around 45–55 words (3–4 full sentences) in ${selectedLang} (an alternative phrasing and angle).
 
-LENGTH REQUIREMENT:
-- Both drafts MUST be around 50 words each (approx 45–55 words, 3 to 4 full sentences). Do NOT make them short one-liners.
+CRITICAL SINGLE-LANGUAGE RULE:
+- BOTH Draft 1 and Draft 2 MUST be written 100% in ${selectedLang.toUpperCase()} (${langDesc}).
+- Do NOT output two different languages. Both options must be in ${selectedLang}.
 
+LENGTH: ~50 words each (approx 45–55 words, 3 to 4 full sentences). Do NOT make them short one-liners.
 Tone: ${sentiment} (${rating}/5 stars).
 Rules: Start directly with observations. Never use clichés ("I recently visited", "Top notch service"). ${emojiDirective}. No fake facts.`;
 
@@ -535,9 +545,10 @@ ${aspectsContext}
 ${tagsContext}
 ${customerNoteContext}
 Rating: ${rating}/5 stars (${sentiment})
+Requested Language: ${selectedLang}
 Variety seed: ${variationSeed}
 
-Output:
+Output format:
 Draft 1:
 Draft 2:`;
 
@@ -568,7 +579,7 @@ Draft 2:`;
   } catch (err) {
     // If all AI calls failed, timed out, or hit limits, provide instant high-quality fallback reviews
     console.warn('[AI Drafts] Network/AI unavailable, using instant contextual fallback:', err);
-    const drafts = generateInstantFallbackDrafts(businessName, rating, lang1, lang2, options);
+    const drafts = generateInstantFallbackDrafts(businessName, rating, selectedLang, selectedLang, options);
     return {
       drafts,
       tokens_prompt: 0,
@@ -604,18 +615,39 @@ export function generateInstantFallbackDrafts(
       `Kaafi acchi jagah hai aur yahan ki service waqai 10/10 hai. Sab kuch time pe hua aur staff ne respectful tareeqe se attend kiya. ${highlights ? `Inki ${highlights} service kaafi genuine lagi. ` : ''}Aise honest aur helpful log milna mushkil hai. Very happy with the service!`,
     ];
 
-    const d1 = enOptions[Math.floor(Math.random() * enOptions.length)];
-    const d2 = hiOptions[Math.floor(Math.random() * hiOptions.length)];
-    return [d1, d2];
+    const isHinglish =
+      (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
+
+    if (isHinglish) {
+      return [hiOptions[0], hiOptions[1]];
+    } else {
+      return [enOptions[0], enOptions[1]];
+    }
   } else if (rating === 3) {
+    const isHinglish =
+      (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
+    if (isHinglish) {
+      return [
+        `Experience theek-thaak raha ${businessName} par. Kaam to ho gaya lekin wait time kaafi zyada tha aur thoda crowd management improve karne ki zaroorat hai. Overall average visit tha.`,
+        `Thoda mixed experience raha. Staff helpful tha lekin response time slow tha. Aage thode improvements ki umeed hai.`,
+      ];
+    }
     return [
       `Decent experience overall at ${businessName}. While the main service was satisfactory, the waiting time was longer than expected and staff coordination could have been smoother. Hope to see better turnaround time in the future.`,
-      `Experience theek-thaak raha ${businessName} par. Kaam to theek ho gaya lekin wait time kaafi zyada tha aur thoda crowd management improve karne ki zaroorat hai. Overall average visit tha.`,
+      `Mixed experience today. The team was polite but the turnaround was slower than expected. Decent place but has room for operational improvements.`,
     ];
   } else {
+    const isHinglish =
+      (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
+    if (isHinglish) {
+      return [
+        `${businessName} par experience bilkul accha nahi raha. Staff ne theek se respond nahi kiya aur kaafi der intezar karna pada. Service quality aur coordination me kaafi improvement chahiye.`,
+        `Kaafi disappointed hoon yahan ki service se. Wait time bahut zyada tha aur proper guidance nahi mili. Management ko customer feedback par dhyan dena chahiye.`,
+      ];
+    }
     return [
       `Disappointed with the experience at ${businessName}. The wait time was excessively long and the communication was lacking. Management needs to pay more attention to customer satisfaction and service speed.`,
-      `${businessName} par experience bilkul accha nahi raha. Staff ne theek se respond nahi kiya aur kaafi der intezar karna pada. Service quality aur coordination me kaafi improvement chahiye.`,
+      `Unhappy with the visit today. Expected much better customer service and responsiveness. Needs serious attention to turnaround time and staff coordination.`,
     ];
   }
 }
