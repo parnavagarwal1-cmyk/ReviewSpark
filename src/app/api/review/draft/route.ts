@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
     selected_aspects?: string[];
     selected_tags?: string[];
     selected_language?: string;
+    attempt?: number;
   };
   try {
     body = await request.json();
@@ -181,6 +182,7 @@ export async function POST(request: NextRequest) {
     primaryLanguage: primaryLang || 'English',
     secondaryLanguage: secondaryLang || 'Hinglish',
     selectedLanguage: selected_language || undefined,
+    attempt: typeof body.attempt === 'number' ? body.attempt : undefined,
   };
 
   // ── Generate drafts ───────────────────────────────────────────────────────

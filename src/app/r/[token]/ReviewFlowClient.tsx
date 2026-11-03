@@ -56,6 +56,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
 
   const [copied, setCopied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [rewriteCount, setRewriteCount] = useState(0);
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -191,6 +192,10 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   async function handleRegenerate() {
     if (!selectedRating || isRegenerating) return;
     setIsRegenerating(true);
+    setGenerateError('');
+    const nextAttempt = rewriteCount + 1;
+    setRewriteCount(nextAttempt);
+
     try {
       const res = await fetch('/api/review/draft', {
         method: 'POST',
@@ -202,17 +207,20 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           selected_aspects: selectedAspects,
           selected_tags: selectedTags,
           selected_language: selectedLanguage,
+          attempt: nextAttempt,
         }),
       });
 
       const data = await res.json();
-      if (res.ok && data.drafts) {
+      if (res.ok && data.drafts && Array.isArray(data.drafts) && data.drafts.length >= 2) {
         setDrafts(data.drafts);
         setEditedDraft(data.drafts[selectedDraftIndex]);
         setEditingIndex(null);
+      } else {
+        setGenerateError(data?.error || 'Unable to rewrite at this moment.');
       }
     } catch {
-      // keep existing drafts
+      setGenerateError('Connection issue. Please try again.');
     } finally {
       setIsRegenerating(false);
     }
@@ -643,6 +651,12 @@ export default function ReviewFlowClient({ token }: { token: string }) {
               </button>
             </div>
 
+            {generateError && (
+              <div style={{ padding: '0.55rem 0.85rem', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', fontSize: '0.8rem', color: '#fca5a5', textAlign: 'center' }}>
+                {generateError}
+              </div>
+            )}
+
             {/* Review Cards Carousel */}
             {aiUnavailable || !drafts ? (
               <div className="rb-review-card active">
@@ -723,6 +737,12 @@ export default function ReviewFlowClient({ token }: { token: string }) {
                             aria-label={`Edit review option ${idx + 1}`}
                             id={`draft-edit-${idx}`}
                           />
+                        ) : isRegenerating ? (
+                          <div className="rb-card-shimmer" aria-hidden="true">
+                            <div className="rb-shimmer-line rb-shimmer-line-1" />
+                            <div className="rb-shimmer-line rb-shimmer-line-2" />
+                            <div className="rb-shimmer-line rb-shimmer-line-3" />
+                          </div>
                         ) : (
                           <p className="rb-card-text">
                             {isActive ? editedDraft : draft}

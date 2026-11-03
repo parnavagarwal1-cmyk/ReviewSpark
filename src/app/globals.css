@@ -1631,6 +1631,31 @@ tbody td {
   outline: none;
 }
 
+/* Shimmer placeholder during Rewrite */
+.rb-card-shimmer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+}
+
+.rb-shimmer-line {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04) 25%, rgba(99, 102, 241, 0.2) 50%, rgba(255, 255, 255, 0.04) 75%);
+  background-size: 200% 100%;
+  animation: rb-shimmer-pulse 1.3s infinite ease-in-out;
+}
+
+.rb-shimmer-line-1 { width: 96%; }
+.rb-shimmer-line-2 { width: 88%; }
+.rb-shimmer-line-3 { width: 68%; }
+
+@keyframes rb-shimmer-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* Pagination Dots */
 .rb-pagination {
   display: flex;

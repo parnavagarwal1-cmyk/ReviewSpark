@@ -440,6 +440,7 @@ export interface GenerateDraftOptions {
   primaryLanguage?: string | null;
   secondaryLanguage?: string | null;
   selectedLanguage?: string | null;
+  attempt?: number;
 }
 
 /**
@@ -546,7 +547,9 @@ ${tagsContext}
 ${customerNoteContext}
 Rating: ${rating}/5 stars (${sentiment})
 Requested Language: ${selectedLang}
-Variety seed: ${variationSeed}
+Rewrite Attempt: ${options.attempt ?? 1}
+Variety seed: ${variationSeed}-${Date.now()}
+Provide 2 fresh and completely unique reviews.
 
 Output format:
 Draft 1:
@@ -559,7 +562,7 @@ Draft 2:`;
         { role: 'user', content: userPrompt },
       ],
       max_tokens: 350,
-      temperature: 0.75,
+      temperature: 0.85,
     });
 
     const content = response.choices[0]?.message?.content ?? '';
@@ -591,8 +594,33 @@ Draft 2:`;
 }
 
 /**
+ * Picks two distinct elements from an array, rotating based on seed/attempt.
+ */
+function pickTwoDistinct<T>(arr: T[], seed?: number): [T, T] {
+  if (arr.length <= 1) return [arr[0], arr[0]];
+  if (arr.length === 2) return [arr[0], arr[1]];
+
+  let i1 = 0;
+  let i2 = 1;
+
+  if (typeof seed === 'number' && Number.isFinite(seed) && seed > 0) {
+    const s = Math.abs(Math.floor(seed));
+    i1 = s % arr.length;
+    // Ensure second index is always different from i1
+    const offset = 1 + (Math.floor(s / arr.length) % (arr.length - 1));
+    i2 = (i1 + offset) % arr.length;
+  } else {
+    i1 = Math.floor(Math.random() * arr.length);
+    i2 = Math.floor(Math.random() * (arr.length - 1));
+    if (i2 >= i1) i2++;
+  }
+
+  return [arr[i1], arr[i2]];
+}
+
+/**
  * Generates instant customized fallback drafts if AI API times out or is offline.
- * Zero latency, 100% reliable.
+ * Zero latency, 100% reliable with diverse rotating templates.
  */
 export function generateInstantFallbackDrafts(
   businessName: string,
@@ -602,53 +630,70 @@ export function generateInstantFallbackDrafts(
   options?: GenerateDraftOptions
 ): [string, string] {
   const highlights = options?.selectedTags?.join(', ') || options?.selectedAspects?.join(', ') || '';
+  const isHinglish =
+    (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
+  const attemptSeed = options?.attempt ?? Math.floor(Math.random() * 100);
 
   if (rating >= 4) {
     const enOptions = [
       `Really smooth and pleasant experience at ${businessName}. ${highlights ? `Special mention to ${highlights} which was outstanding. ` : ''}The team was courteous, attentive, and everything was handled efficiently without any unnecessary waiting time. Clean environment and excellent overall service. Highly recommended to anyone looking for genuine quality!`,
       `Had a fantastic visit here today. The staff at ${businessName} was extremely helpful, professional, and patient throughout. ${highlights ? `Loved their focus on ${highlights}. ` : ''}Everything was transparent and fairly handled. Will definitely be visiting again with friends and family. 5 stars well deserved!`,
       `Outstanding service from start to finish at ${businessName}. Punctual, respectful, and very well-organized workflow. ${highlights ? `Appreciated the high standard of ${highlights}. ` : ''}They truly value their customers and take pride in their work. Would happily recommend them to anyone in the area!`,
+      `Impressed with the professionalism and care shown at ${businessName}. From the moment I arrived, everything was seamless and well taken care of. ${highlights ? `Their attention to ${highlights} really made a difference. ` : ''}Honest guidance, great hygiene, and top-tier support. A solid 10/10 in every aspect.`,
+      `One of the most reliable and customer-friendly places I have visited. ${businessName} has maintained exceptional standards throughout. ${highlights ? `Their expertise with ${highlights} stood out clearly. ` : ''}Quick turnaround, fair treatment, and very welcoming atmosphere. Will surely recommend them to everyone around.`,
+      `Truly exceptional experience at ${businessName}. The entire staff goes above and beyond to make sure you are comfortable and satisfied. ${highlights ? `The quality of ${highlights} was especially impressive. ` : ''}Clear communication and zero hassle from start to finish. Definitely coming back!`,
+      `Super happy with the service received today at ${businessName}. Everything was on schedule, clean, and managed with utmost courtesy. ${highlights ? `Big thumbs up for their focus on ${highlights}. ` : ''}It is rare to see such consistency and dedication. Keep up the wonderful work!`,
+      `A thoroughly positive experience at ${businessName}. Every detail was handled with precision and a friendly smile. ${highlights ? `Very grateful for how well they managed ${highlights}. ` : ''}Fast, honest, and truly professional in their field. Five stars without any second thought!`,
     ];
+
     const hiOptions = [
       `Bohot hi badhiya experience raha ${businessName} me. ${highlights ? `${highlights} waqai me kaafi zabardast tha. ` : ''}Staff ka nature bohot polite aur helpful tha, inhone bina kisi jaldbaazi ke sab kuch patiently handle kiya. Cleanliness aur service dono top-notch hain. Definitely sabko recommend karunga!`,
       `${businessName} par service kaafi fast aur smooth thi. Staff ne sab kuch acche se explain kiya aur poora process bilkul hassle-free raha. ${highlights ? `Khaaskar ${highlights} ne dil jeet liya. ` : ''}Itna accha treatment dekh kar bohot khushi hui. Aage bhi yahin aana pasand karunga!`,
-      `Kaafi acchi jagah hai aur yahan ki service waqai 10/10 hai. Sab kuch time pe hua aur staff ne respectful tareeqe se attend kiya. ${highlights ? `Inki ${highlights} service kaafi genuine lagi. ` : ''}Aise honest aur helpful log milna mushkil hai. Very happy with the service!`,
+      `Kaafi acchi jagah hai aur yahan ki service waqai 10/10 hai. Sab kuch time pe hua aur staff ne respectful tareeqe se attend kiya. ${highlights ? `Inki ${highlights} service kaafi genuine lagi. ` : ''}Aise honest aur helpful log milna mushkil hai. Very happy with the overall service!`,
+      `${businessName} me visit karke kaafi satisfaction mila. Staff bohot cooperative hai aur har query ko acche se address karte hain. ${highlights ? `Khas taur par ${highlights} ki quality lajawab thi. ` : ''}Pura mahaul clean aur professional hai. Meri taraf se 5 stars!`,
+      `Sach me bohot shaandar experience raha ${businessName} ke saath. Service bina kisi delay ke fast tareeqe se deliver hui. ${highlights ? `${highlights} ki wajah se visit aur bhi memorable ban gayi. ` : ''}Jo log genuine aur trusted place dhoondh rahe hain unke liye best recommendation hai.`,
+      `Har tarah se perfect visit tha ${businessName} me. Staff ka behavior polite aur welcoming tha, kisi bhi cheez ka pressure nahi diya. ${highlights ? `Inhone ${highlights} par khas dhyan diya jo bohot pasand aaya. ` : ''}Definitely apne doston aur family ko recommend karunga!`,
+      `Bohot clean, hygienic aur well-managed place hai ${businessName}. Inka workflow bohot organized hai aur customer ko bilkul wait nahi karwate. ${highlights ? `${highlights} waqai worth it tha. ` : ''}Aisi high quality service provide karne ke liye thank you team!`,
+      `First time visit tha ${businessName} me aur expectations se bhi kaafi behtar laga. Transparency aur customer comfort inki priority lagti hai. ${highlights ? `${highlights} ka kaam bilkul perfect tha. ` : ''}Aage ke liye mera permanent go-to spot ban gaya hai!`,
     ];
 
-    const isHinglish =
-      (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
-
-    if (isHinglish) {
-      return [hiOptions[0], hiOptions[1]];
-    } else {
-      return [enOptions[0], enOptions[1]];
-    }
+    return isHinglish
+      ? pickTwoDistinct(hiOptions, attemptSeed)
+      : pickTwoDistinct(enOptions, attemptSeed);
   } else if (rating === 3) {
-    const isHinglish =
-      (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
-    if (isHinglish) {
-      return [
-        `Experience theek-thaak raha ${businessName} par. Kaam to ho gaya lekin wait time kaafi zyada tha aur thoda crowd management improve karne ki zaroorat hai. Overall average visit tha.`,
-        `Thoda mixed experience raha. Staff helpful tha lekin response time slow tha. Aage thode improvements ki umeed hai.`,
-      ];
-    }
-    return [
+    const en3Options = [
       `Decent experience overall at ${businessName}. While the main service was satisfactory, the waiting time was longer than expected and staff coordination could have been smoother. Hope to see better turnaround time in the future.`,
-      `Mixed experience today. The team was polite but the turnaround was slower than expected. Decent place but has room for operational improvements.`,
+      `Mixed experience today. The team was polite but the turnaround was slower than expected. Decent place but has room for operational improvements during rush hours.`,
+      `Average visit at ${businessName}. Service quality was acceptable, but communication could have been clearer regarding wait times. Adequate for basic requirements.`,
+      `Okay experience. Staff was courteous, but the workflow felt slightly disorganized today. With better queue management this place can improve significantly.`,
     ];
+    const hi3Options = [
+      `Experience theek-thaak raha ${businessName} par. Kaam to ho gaya lekin wait time kaafi zyada tha aur thoda crowd management improve karne ki zaroorat hai. Overall average visit tha.`,
+      `Thoda mixed experience raha. Staff helpful tha lekin response time slow tha. Aage thode improvements aur timely coordination ki umeed hai.`,
+      `Average visit raha ${businessName} me. Service mein koi khas complaint nahi hai lekin process ko thoda aur fast aur organized banaya ja sakta hai.`,
+      `Kaam ho gaya par thodi confusion thi staff ke beech. Polite hain log, lekin rush ke time customer handling better honi chahiye.`,
+    ];
+
+    return isHinglish
+      ? pickTwoDistinct(hi3Options, attemptSeed)
+      : pickTwoDistinct(en3Options, attemptSeed);
   } else {
-    const isHinglish =
-      (options?.selectedLanguage || lang1 || '').toLowerCase().includes('hinglish');
-    if (isHinglish) {
-      return [
-        `${businessName} par experience bilkul accha nahi raha. Staff ne theek se respond nahi kiya aur kaafi der intezar karna pada. Service quality aur coordination me kaafi improvement chahiye.`,
-        `Kaafi disappointed hoon yahan ki service se. Wait time bahut zyada tha aur proper guidance nahi mili. Management ko customer feedback par dhyan dena chahiye.`,
-      ];
-    }
-    return [
+    const enBadOptions = [
       `Disappointed with the experience at ${businessName}. The wait time was excessively long and the communication was lacking. Management needs to pay more attention to customer satisfaction and service speed.`,
       `Unhappy with the visit today. Expected much better customer service and responsiveness. Needs serious attention to turnaround time and staff coordination.`,
+      `Poor experience at ${businessName}. Did not receive proper guidance and had to wait far too long without updates. Needs substantial improvement in service delivery.`,
+      `Not satisfied with the service provided today. Staff seemed indifferent to delays and the workflow was messy. Would hesitate to recommend until management improves.`,
     ];
+    const hiBadOptions = [
+      `${businessName} par experience bilkul accha nahi raha. Staff ne theek se respond nahi kiya aur kaafi der intezar karna pada. Service quality aur coordination me kaafi improvement chahiye.`,
+      `Kaafi disappointed hoon yahan ki service se. Wait time bahut zyada tha aur proper guidance nahi mili. Management ko customer feedback par serious dhyan dena chahiye.`,
+      `Visit bilkul satisfactory nahi rahi. Response time bohot slow tha aur staff attentive nahi lag raha tha. Basic customer service standards improve karne ki sakht zaroorat hai.`,
+      `Expectations se kaafi neeche rahi service. Time management bilkul kharab tha aur queries par proper dhyan nahi diya gaya. Kaafi disappointed feel hua.`,
+    ];
+
+    return isHinglish
+      ? pickTwoDistinct(hiBadOptions, attemptSeed)
+      : pickTwoDistinct(enBadOptions, attemptSeed);
   }
 }
 
