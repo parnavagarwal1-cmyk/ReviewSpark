@@ -396,20 +396,16 @@ const STYLE_PERSPECTIVES = [
 
 const LENGTH_PROFILES = [
   {
-    d1: 'CRISP & PUNCHY (14–24 words, 1–2 short impactful sentences)',
-    d2: 'BALANCED & CONVERSATIONAL (35–55 words, 2–3 sentences)',
+    d1: 'around 45–55 words (3–4 full sentences with specific details)',
+    d2: 'around 45–55 words (3–4 conversational sentences)',
   },
   {
-    d1: 'DETAILED & DESCRIPTIVE (45–75 words, 3–4 sentences with specific observations)',
-    d2: 'SHORT & DIRECT (15–25 words, 1–2 punchy sentences)',
+    d1: 'around 50 words (3–4 descriptive sentences covering experience & service)',
+    d2: 'around 48–56 words (3–4 natural sentences with warm recommendation)',
   },
   {
-    d1: 'MEDIUM & NATURAL (28–42 words, 2 sentences)',
-    d2: 'RICHER NARRATIVE (50–75 words, 3–4 sentences)',
-  },
-  {
-    d1: 'CONCISE RECOMMENDATION (18–28 words)',
-    d2: 'MODERATE & DETAILED (35–52 words)',
+    d1: 'around 45–55 words (3–4 genuine sentences focusing on staff & quality)',
+    d2: 'around 50–60 words (3–4 engaging sentences with personal appreciation)',
   },
 ];
 
@@ -524,6 +520,9 @@ Write EXACTLY 2 distinct, human review drafts:
 - "Draft 1:" in natural ${lang1} (${lengthProfile.d1}).
 - "Draft 2:" in conversational ${lang2} (${lengthProfile.d2}) in Roman script (e.g. "Staff kaafi polite tha aur service bohot acchi lagi...").
 
+LENGTH REQUIREMENT:
+- Both drafts MUST be around 50 words each (approx 45–55 words, 3 to 4 full sentences). Do NOT make them short one-liners.
+
 Tone: ${sentiment} (${rating}/5 stars).
 Rules: Start directly with observations. Never use clichés ("I recently visited", "Top notch service"). ${emojiDirective}. No fake facts.`;
 
@@ -548,7 +547,7 @@ Draft 2:`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 220,
+      max_tokens: 350,
       temperature: 0.75,
     });
 
@@ -595,14 +594,14 @@ export function generateInstantFallbackDrafts(
 
   if (rating >= 4) {
     const enOptions = [
-      `Really smooth and pleasant experience at ${businessName}. ${highlights ? `Loved the ${highlights}. ` : ''}The staff was courteous, polite, and everything was taken care of quickly. Highly recommended!`,
-      `Had a great visit here today. Very professional team and clean, well-maintained setup. ${highlights ? `Special mention to ${highlights}. ` : ''}Will definitely be coming back.`,
-      `Great service from start to finish at ${businessName}. Transparent, fast, and very helpful staff. Definitely worth visiting!`,
+      `Really smooth and pleasant experience at ${businessName}. ${highlights ? `Special mention to ${highlights} which was outstanding. ` : ''}The team was courteous, attentive, and everything was handled efficiently without any unnecessary waiting time. Clean environment and excellent overall service. Highly recommended to anyone looking for genuine quality!`,
+      `Had a fantastic visit here today. The staff at ${businessName} was extremely helpful, professional, and patient throughout. ${highlights ? `Loved their focus on ${highlights}. ` : ''}Everything was transparent and fairly handled. Will definitely be visiting again with friends and family. 5 stars well deserved!`,
+      `Outstanding service from start to finish at ${businessName}. Punctual, respectful, and very well-organized workflow. ${highlights ? `Appreciated the high standard of ${highlights}. ` : ''}They truly value their customers and take pride in their work. Would happily recommend them to anyone in the area!`,
     ];
     const hiOptions = [
-      `Bohot hi badhiya experience raha ${businessName} me. ${highlights ? `${highlights} kaafi accha tha. ` : ''}Staff ka nature bohot helpful aur polite tha. Definitely recommend karunga!`,
-      `${businessName} par service kaafi fast aur smooth thi. Staff ne sab acche se explain kiya aur bilkul hassle-free visit raha. 5 stars!`,
-      `Kaafi acchi jagah hai aur service bhi 10/10 hai. Sab kuch time pe aur bina kisi problem ke ho gaya. Very happy with the service!`,
+      `Bohot hi badhiya experience raha ${businessName} me. ${highlights ? `${highlights} waqai me kaafi zabardast tha. ` : ''}Staff ka nature bohot polite aur helpful tha, inhone bina kisi jaldbaazi ke sab kuch patiently handle kiya. Cleanliness aur service dono top-notch hain. Definitely sabko recommend karunga!`,
+      `${businessName} par service kaafi fast aur smooth thi. Staff ne sab kuch acche se explain kiya aur poora process bilkul hassle-free raha. ${highlights ? `Khaaskar ${highlights} ne dil jeet liya. ` : ''}Itna accha treatment dekh kar bohot khushi hui. Aage bhi yahin aana pasand karunga!`,
+      `Kaafi acchi jagah hai aur yahan ki service waqai 10/10 hai. Sab kuch time pe hua aur staff ne respectful tareeqe se attend kiya. ${highlights ? `Inki ${highlights} service kaafi genuine lagi. ` : ''}Aise honest aur helpful log milna mushkil hai. Very happy with the service!`,
     ];
 
     const d1 = enOptions[Math.floor(Math.random() * enOptions.length)];
@@ -610,13 +609,13 @@ export function generateInstantFallbackDrafts(
     return [d1, d2];
   } else if (rating === 3) {
     return [
-      `Average experience at ${businessName}. Service was okay but there is room for improvement in speed and waiting time.`,
-      `Experience theek-thaak tha ${businessName} par. Service normal thi par thoda better kiya ja sakta hai.`,
+      `Decent experience overall at ${businessName}. While the main service was satisfactory, the waiting time was longer than expected and staff coordination could have been smoother. Hope to see better turnaround time in the future.`,
+      `Experience theek-thaak raha ${businessName} par. Kaam to theek ho gaya lekin wait time kaafi zyada tha aur thoda crowd management improve karne ki zaroorat hai. Overall average visit tha.`,
     ];
   } else {
     return [
-      `Expected a much better experience at ${businessName}. The wait time was long and staff coordination could be improved.`,
-      `${businessName} me experience itna accha nahi raha. Service kaafi slow thi aur improvement ki zaroorat hai.`,
+      `Disappointed with the experience at ${businessName}. The wait time was excessively long and the communication was lacking. Management needs to pay more attention to customer satisfaction and service speed.`,
+      `${businessName} par experience bilkul accha nahi raha. Staff ne theek se respond nahi kiya aur kaafi der intezar karna pada. Service quality aur coordination me kaafi improvement chahiye.`,
     ];
   }
 }
