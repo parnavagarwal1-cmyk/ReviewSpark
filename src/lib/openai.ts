@@ -231,6 +231,13 @@ interface ChatCompletionParams {
   temperature: number;
 }
 
+interface GeminiDirectResult {
+  text: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 /**
  * Direct native Google Gemini REST API caller.
  * Bypasses SDK wrapper layers for maximum speed, zero header conflicts, and 100% reliability.
@@ -241,7 +248,7 @@ async function callGeminiDirectRest(
   systemInstruction: string,
   userPrompt: string,
   temperature = 1.0
-): Promise<string> {
+): Promise<GeminiDirectResult> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const body = {
@@ -280,7 +287,17 @@ async function callGeminiDirectRest(
     throw new Error('Gemini returned empty response candidate');
   }
 
-  return text;
+  const usage = data?.usageMetadata;
+  const promptTokens = Number(usage?.promptTokenCount) || 450;
+  const completionTokens = Number(usage?.candidatesTokenCount) || 150;
+  const totalTokens = Number(usage?.totalTokenCount) || promptTokens + completionTokens;
+
+  return {
+    text,
+    promptTokens,
+    completionTokens,
+    totalTokens,
+  };
 }
 
 /**
@@ -312,7 +329,7 @@ async function executeChatCompletionWithFallback(
         const systemMsg = params.messages.find((m) => m.role === 'system')?.content || '';
         const userMsg = params.messages.find((m) => m.role === 'user')?.content || '';
 
-        const directText = await callGeminiDirectRest(
+        const directResult = await callGeminiDirectRest(
           key,
           geminiModel,
           systemMsg,
@@ -333,7 +350,7 @@ async function executeChatCompletionWithFallback(
               logprobs: null,
               message: {
                 role: 'assistant',
-                content: directText,
+                content: directResult.text,
                 refusal: null,
               },
             },
@@ -342,9 +359,9 @@ async function executeChatCompletionWithFallback(
           model: geminiModel,
           object: 'chat.completion',
           usage: {
-            prompt_tokens: 150,
-            completion_tokens: 100,
-            total_tokens: 250,
+            prompt_tokens: directResult.promptTokens,
+            completion_tokens: directResult.completionTokens,
+            total_tokens: directResult.totalTokens,
           },
         };
 
