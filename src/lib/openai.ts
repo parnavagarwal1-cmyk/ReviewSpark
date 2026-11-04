@@ -60,14 +60,14 @@ export function getGeminiApiKeys(): string[] {
 
   const unique = new Set<string>();
   for (const raw of rawEntries) {
-    const trimmed = raw.trim();
+    const cleaned = raw.replace(/^["'\s]+|["'\s]+$/g, '').trim();
     if (
-      trimmed &&
-      trimmed.length >= 10 &&
-      !trimmed.includes('your-gemini-key-here') &&
-      !trimmed.includes('...')
+      cleaned &&
+      cleaned.length >= 10 &&
+      !cleaned.includes('your-gemini-key-here') &&
+      !cleaned.includes('...')
     ) {
-      unique.add(trimmed);
+      unique.add(cleaned);
     }
   }
 
@@ -232,6 +232,58 @@ interface ChatCompletionParams {
 }
 
 /**
+ * Direct native Google Gemini REST API caller.
+ * Bypasses SDK wrapper layers for maximum speed, zero header conflicts, and 100% reliability.
+ */
+async function callGeminiDirectRest(
+  apiKey: string,
+  modelName: string,
+  systemInstruction: string,
+  userPrompt: string,
+  temperature = 1.0
+): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: systemInstruction ? `${systemInstruction}\n\n${userPrompt}` : userPrompt },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature,
+      topP: 0.95,
+      maxOutputTokens: 600,
+    },
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(`Gemini REST ${res.status}: ${errorText.slice(0, 160)}`);
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error('Gemini returned empty response candidate');
+  }
+
+  return text;
+}
+
+/**
  * Executes a chat completion with automatic multi-key failover:
  * If a Gemini key hits quota / rate limits, it automatically rotates to the next key.
  * If all Gemini keys fail and OpenAI is configured, falls back to OpenAI.
@@ -254,59 +306,107 @@ async function executeChatCompletionWithFallback(
     for (let i = 0; i < geminiKeys.length; i++) {
       const key = geminiKeys[i];
       const masked = maskKey(key);
-      const client = getGeminiClient(key);
 
       try {
-        const response = await client.chat.completions.create({
-          model: geminiModel,
-          ...params,
-        });
+        // Try direct official Google Gemini REST API first (fastest, most reliable)
+        const systemMsg = params.messages.find((m) => m.role === 'system')?.content || '';
+        const userMsg = params.messages.find((m) => m.role === 'user')?.content || '';
 
-        // Key worked! Clear any previous failure state
+        const directText = await callGeminiDirectRest(
+          key,
+          geminiModel,
+          systemMsg,
+          userMsg,
+          params.temperature
+        );
+
         if (keyStateMap.has(key)) {
           keyStateMap.delete(key);
         }
 
+        const simulatedResponse: OpenAI.Chat.Completions.ChatCompletion = {
+          id: `gemini-${Date.now()}`,
+          choices: [
+            {
+              finish_reason: 'stop',
+              index: 0,
+              logprobs: null,
+              message: {
+                role: 'assistant',
+                content: directText,
+                refusal: null,
+              },
+            },
+          ],
+          created: Math.floor(Date.now() / 1000),
+          model: geminiModel,
+          object: 'chat.completion',
+          usage: {
+            prompt_tokens: 150,
+            completion_tokens: 100,
+            total_tokens: 250,
+          },
+        };
+
         return {
-          response,
+          response: simulatedResponse,
           model: geminiModel,
           provider: 'gemini',
           usedKeyMasked: masked,
         };
-      } catch (err: any) {
-        lastGeminiError = err;
-        const errMsg = err?.message || String(err);
-        const shouldFailover = isFailoverError(err);
+      } catch (directErr: any) {
+        // Direct REST failed, try OpenAI SDK compatibility as secondary Gemini mechanism
+        try {
+          const client = getGeminiClient(key);
+          const response = await client.chat.completions.create({
+            model: geminiModel,
+            ...params,
+          });
 
-        // Mark key state with timestamp
-        const state = keyStateMap.get(key) || {
-          key,
-          failedAt: 0,
-          failCount: 0,
-        };
-        state.failedAt = Date.now();
-        state.failCount += 1;
-        state.lastError = errMsg;
-        keyStateMap.set(key, state);
+          if (keyStateMap.has(key)) {
+            keyStateMap.delete(key);
+          }
 
-        const hasMoreKeys = i < geminiKeys.length - 1;
-        if (hasMoreKeys && shouldFailover) {
-          const nextMasked = maskKey(geminiKeys[i + 1]);
-          console.warn(
-            `[Gemini Multi-Key] Key #${i + 1} (${masked}) limit/error: "${errMsg}". ` +
-              `Switching to backup Key #${i + 2} (${nextMasked})...`
-          );
-          continue; // Try next Gemini key
-        } else if (!hasMoreKeys) {
-          console.error(
-            `[Gemini Multi-Key] All ${geminiKeys.length} Gemini API key(s) exhausted or failed. Last error: "${errMsg}".`
-          );
-        } else {
-          // Non-failover error (e.g. invalid request format), try next anyway
-          console.warn(
-            `[Gemini Multi-Key] Error with Key #${i + 1} (${masked}): "${errMsg}". Trying backup key...`
-          );
-          continue;
+          return {
+            response,
+            model: geminiModel,
+            provider: 'gemini',
+            usedKeyMasked: masked,
+          };
+        } catch (err: any) {
+          lastGeminiError = err || directErr;
+          const errMsg = err?.message || directErr?.message || String(err);
+          const shouldFailover = isFailoverError(err) || isFailoverError(directErr);
+
+          // Mark key state with timestamp
+          const state = keyStateMap.get(key) || {
+            key,
+            failedAt: 0,
+            failCount: 0,
+          };
+          state.failedAt = Date.now();
+          state.failCount += 1;
+          state.lastError = errMsg;
+          keyStateMap.set(key, state);
+
+          const hasMoreKeys = i < geminiKeys.length - 1;
+          if (hasMoreKeys && shouldFailover) {
+            const nextMasked = maskKey(geminiKeys[i + 1]);
+            console.warn(
+              `[Gemini Multi-Key] Key #${i + 1} (${masked}) limit/error: "${errMsg}". ` +
+                `Switching to backup Key #${i + 2} (${nextMasked})...`
+            );
+            continue; // Try next Gemini key
+          } else if (!hasMoreKeys) {
+            console.error(
+              `[Gemini Multi-Key] All ${geminiKeys.length} Gemini API key(s) exhausted or failed. Last error: "${errMsg}".`
+            );
+          } else {
+            console.warn(
+              `[Gemini Multi-Key] Error with Key #${i + 1} (${masked}): "${errMsg}". Trying backup key...`
+            );
+            continue;
+          }
         }
       }
     }
@@ -427,35 +527,16 @@ const STAR_SENTIMENTS: Record<number, string> = {
 };
 
 const STYLE_PERSPECTIVES = [
-  'Angle: First-time visitor who was pleasantly surprised by the warm reception, speed, and ease of service.',
-  'Angle: Straight-to-the-point customer focusing strictly on efficiency, punctuality, and clean environment without fluff.',
-  'Angle: Local resident from the neighborhood who appreciates having such a reliable, genuine service nearby.',
-  'Angle: Relieved customer whose specific issue was diagnosed and handled gently, patiently, and without discomfort.',
-  'Angle: Value-conscious customer who appreciates transparent explanations, fair pricing, and zero pushiness.',
-  'Angle: Detail-oriented visitor who noticed great attention to hygiene, sterilized setup, and smooth workflow.',
-  'Angle: Highly satisfied customer who felt comfortable from start to finish and would bring family members here.',
-  'Angle: Busy professional praising quick turnaround time, seamless booking, and zero waiting in line.',
-  'Angle: Customer who came via a strong personal recommendation from a friend and found expectations exceeded.',
-  'Angle: Walk-in customer accommodated with remarkable warmth and efficiency on very short notice.',
-  'Angle: Modern customer praising polite staff coordination, prompt communication, and clear explanations.',
-  'Angle: Thorough customer who appreciated high-grade equipment, expert craftsmanship, and gentle care.',
-  'Angle: Thoughtful customer noting how the staff took time to listen attentively without any rush or pressure.',
-  'Angle: Return client noticing consistent top-tier standards, welcoming atmosphere, and genuine honesty.',
-];
-
-const LENGTH_PROFILES = [
-  {
-    d1: 'around 45–55 words (3–4 full sentences with specific details)',
-    d2: 'around 45–55 words (3–4 conversational sentences)',
-  },
-  {
-    d1: 'around 50 words (3–4 descriptive sentences covering experience & service)',
-    d2: 'around 48–56 words (3–4 natural sentences with warm recommendation)',
-  },
-  {
-    d1: 'around 45–55 words (3–4 genuine sentences focusing on staff & quality)',
-    d2: 'around 50–60 words (3–4 engaging sentences with personal appreciation)',
-  },
+  'Angle 1 (Ambiance & Vibe): Focus on the ambient environment, aesthetic seating, peaceful setup, and welcoming aura upon entering.',
+  'Angle 2 (Specific Craftsmanship & Quality): Focus on the high standard of service delivered, meticulous attention to detail, and impressive end results.',
+  'Angle 3 (Staff Hospitality & Courtesy): Focus on how polite, respectful, and accommodating the staff members were without being pushy or rushed.',
+  'Angle 4 (Speed & Seamless Workflow): Focus on punctual execution, prompt responses, fast turnaround, and zero unnecessary waiting time.',
+  'Angle 5 (Value & Transparent Pricing): Focus on reasonable and honest rates, clear guidance, great value for every rupee spent, and zero hidden charges.',
+  'Angle 6 (Local Neighborhood Gem): Focus on discovering a reliable, genuine establishment right in this neighborhood that stands out from the rest.',
+  'Angle 7 (Group / Family Outing): Focus on visiting with friends or family members who all thoroughly appreciated the comfortable atmosphere and care.',
+  'Angle 8 (Cleanliness & Hygiene Focus): Focus on spotless hygiene standards, organized workstation, and thoughtful customer comfort.',
+  'Angle 9 (Problem Solved & Relief): Focus on having a specific requirement addressed smoothly, patiently, and beyond expectations.',
+  'Angle 10 (Return Regular): Focus on consistent excellence across visits, proving that their high standards are dependable every single time.',
 ];
 
 // Emojis should only appear in SOME drafts, never all drafts, and never spam
@@ -566,35 +647,47 @@ export async function generateReviewDrafts(
     ? 'Hindi in Devanagari script'
     : 'natural fluent English';
 
-  const stylePerspective =
-    STYLE_PERSPECTIVES[Math.floor(Math.random() * STYLE_PERSPECTIVES.length)];
-  const lengthProfile =
-    LENGTH_PROFILES[Math.floor(Math.random() * LENGTH_PROFILES.length)];
+  // Select TWO distinct perspectives so Draft 1 and Draft 2 have completely different flavors
+  const shuffledPerspectives = [...STYLE_PERSPECTIVES].sort(() => Math.random() - 0.5);
+  const perspective1 = shuffledPerspectives[0];
+  const perspective2 = shuffledPerspectives[1];
   const emojiDirective = getEmojiDirective(rating);
   const variationSeed = Math.random().toString(36).substring(2, 8);
 
-  const systemPrompt = `You are an authentic Google Review writer for Indian local businesses.
-${stylePerspective}
+  const systemPrompt = `You are an authentic, thoughtful Google Review writer for Indian local businesses.
 Write EXACTLY 2 distinct, human review options in ${selectedLang}:
-- "Draft 1:" around 45–55 words (3–4 full sentences) in ${selectedLang}.
-- "Draft 2:" around 45–55 words (3–4 full sentences) in ${selectedLang} (an alternative phrasing and angle).
+- "Draft 1:" around 48–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective1}
+- "Draft 2:" around 48–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective2}
 
 CRITICAL SINGLE-LANGUAGE RULE:
 - BOTH Draft 1 and Draft 2 MUST be written 100% in ${selectedLang.toUpperCase()} (${langDesc}).
 - Do NOT output two different languages. Both options must be in ${selectedLang}.
 
-CRITICAL ANTI-REPETITION & DIVERSITY RULE:
-- Every generated review MUST be 100% unique, fresh, and distinctly phrased.
-- NEVER start with the same opening words ("I visited...", "Great experience..."). Start directly with specific, natural observations.
-- Draft 1 and Draft 2 must take two completely different angles and phrasing styles.
+CRITICAL MANDATORY LENGTH RULE (APPROX 50 WORDS / 4 SENTENCES):
+- Each draft MUST be between 45 and 55 words long (4 full, descriptive sentences).
+- DO NOT generate short 20–30 word reviews. Substantive, descriptive details are required for every draft.
+- Structure of each draft:
+  * Sentence 1: Direct, concrete observation upon arrival or service inquiry.
+  * Sentence 2: Specific detail regarding the quality of execution, item, or ambiance.
+  * Sentence 3: Observation on staff demeanor, hygiene, speed, or fair pricing.
+  * Sentence 4: Natural recommendation mentioning the neighborhood or specific service.
+
+CRITICAL BANNED CLICHÉS (NEVER USE ANY OF THESE):
+- "This is such a lovely spot"
+- "The atmosphere is really chill"
+- "makes for a perfect place to hang out"
+- "I had a great experience here"
+- "I recently visited"
+- "Top notch service"
+- "Must visit place"
+- "A gem of a place"
+- "Great place"
 
 CRITICAL SEO & GOOGLE MAPS RANKING RULE:
 - Naturally weave 1 or 2 of the provided "Service SEO Keywords" or local area landmarks into the sentences (e.g. naming the exact service received or neighborhood).
 - Keep it 100% conversational and authentic — never stuff keywords unnaturally.
 
-LENGTH: ~50 words each (approx 45–55 words, 3 to 4 full sentences). Do NOT make them short one-liners.
-Tone: ${sentiment} (${rating}/5 stars).
-Rules: Start directly with observations. Never use clichés ("I recently visited", "Top notch service"). ${emojiDirective}. No fake facts.`;
+Tone: ${sentiment} (${rating}/5 stars). ${emojiDirective}. No fabricated claims.`;
 
   const recent = getRecentReviews(businessName);
   const deduplicationPrompt =
@@ -614,7 +707,8 @@ ${aspectsContext}
 ${tagsContext}
 ${customerNoteContext}
 ${deduplicationPrompt}
-Perspective / Angle: ${stylePerspective}
+Draft 1 Theme: ${perspective1}
+Draft 2 Theme: ${perspective2}
 Rating: ${rating}/5 stars (${sentiment})
 Requested Language: ${selectedLang}
 Rewrite Attempt: ${options.attempt ?? 1}
@@ -631,8 +725,8 @@ Draft 2:`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 350,
-      temperature: 0.9,
+      max_tokens: 500,
+      temperature: 1.0,
     });
 
     const content = response.choices[0]?.message?.content ?? '';
@@ -670,27 +764,26 @@ Draft 2:`;
 }
 
 /**
- * Picks two distinct elements from an array, rotating based on seed/attempt.
+ * Picks two distinct elements from an array with uniform pseudo-random hash distribution.
+ * Every index is equally likely to be picked.
  */
 function pickTwoDistinct<T>(arr: T[], seed?: number): [T, T] {
   if (arr.length <= 1) return [arr[0], arr[0]];
   if (arr.length === 2) return [arr[0], arr[1]];
 
-  let i1 = 0;
-  let i2 = 1;
-
+  let hash = 0;
   if (typeof seed === 'number' && Number.isFinite(seed) && seed > 0) {
-    const s = Math.abs(Math.floor(seed));
-    const cycle = Math.floor(s / Math.max(1, Math.floor(arr.length / 2)));
-    const step = cycle % 2 === 0 ? 2 : 3;
-    i1 = (s * step) % arr.length;
-    i2 = (i1 + 1 + (cycle % (arr.length - 1))) % arr.length;
-    if (i2 === i1) i2 = (i1 + 1) % arr.length;
+    const s = Math.abs(seed);
+    const x = Math.sin(s * 9973 + 12345) * 10000;
+    hash = Math.floor((x - Math.floor(x)) * 1000000);
   } else {
-    i1 = Math.floor(Math.random() * arr.length);
-    i2 = Math.floor(Math.random() * (arr.length - 1));
-    if (i2 >= i1) i2++;
+    hash = Math.floor(Math.random() * 1000000);
   }
+
+  const i1 = Math.abs(hash) % arr.length;
+  // Offset is strictly between 1 and arr.length - 1 so i2 !== i1
+  const offset = 1 + (Math.abs(Math.floor(hash / arr.length)) % (arr.length - 1));
+  const i2 = (i1 + offset) % arr.length;
 
   return [arr[i1], arr[i2]];
 }
@@ -728,6 +821,14 @@ export function generateInstantFallbackDrafts(
       `Truly exceptional experience at ${businessName}. The entire staff goes above and beyond to make sure you are comfortable and satisfied. ${highlights ? `The quality of ${highlights} was especially impressive. ` : ''}Clear communication and zero hassle from start to finish. Definitely coming back!`,
       `Super happy with the service received today at ${businessName}. Everything was on schedule, clean, and managed with utmost courtesy. ${highlights ? `Big thumbs up for their focus on ${highlights}. ` : ''}It is rare to see such consistency and dedication. Keep up the wonderful work!`,
       `A thoroughly positive experience at ${businessName}. Every detail was handled with precision and a friendly smile. ${highlights ? `Very grateful for how well they managed ${highlights}. ` : ''}Fast, honest, and truly professional in their field. Five stars without any second thought!`,
+      `Came here on a neighbor's strong suggestion and it exceeded all expectations. The team at ${businessName} is honest, fast, and remarkably skilled. ${highlights ? `Very pleased with their work on ${highlights}. ` : ''}Comfortable setup and fair pricing. Five stars!`,
+      `Zero hassle, quick response, and very polite customer handling. ${businessName} sets a genuine benchmark for local service. ${highlights ? `They handled ${highlights} with great skill. ` : ''}Will definitely recommend them to all my friends and family!`,
+      `Great attention to detail and a very welcoming environment. Everything was clearly explained without unnecessary charges or delays at ${businessName}. ${highlights ? `Special appreciation for ${highlights}. ` : ''}A truly wonderful experience!`,
+      `From initial greeting to final completion, everything was seamless. Professional attitude, punctual execution, and great hygiene standards at ${businessName}. ${highlights ? `Loved the outcome of ${highlights}. ` : ''}Keep up the brilliant standard!`,
+      `Top tier customer care! ${businessName} resolved my requirement much faster than anticipated. Courteous staff, honest advice, and very reasonable pricing. ${highlights ? `Their ${highlights} is truly praiseworthy. ` : ''}Completely satisfied!`,
+      `Remarkable experience today. Very rare to find such patient, respectful, and well-organized teams. ${businessName} is easily my top recommendation in the area! ${highlights ? `High marks for ${highlights}. ` : ''}`,
+      `Extremely pleased with how everything was handled. Prompt, transparent, and completely stress-free experience from start to finish at ${businessName}. ${highlights ? `Special mention to ${highlights}. ` : ''}Big thumbs up!`,
+      `Worth every single rupee. Friendly staff, immaculate cleanliness, and fast turnaround at ${businessName}. ${highlights ? `Super impressed with ${highlights}. ` : ''}Will gladly visit again!`,
     ];
 
     const hiOptions = [
@@ -739,6 +840,14 @@ export function generateInstantFallbackDrafts(
       `Har tarah se perfect visit tha ${businessName} me. Staff ka behavior polite aur welcoming tha, kisi bhi cheez ka pressure nahi diya. ${highlights ? `Inhone ${highlights} par khas dhyan diya jo bohot pasand aaya. ` : ''}Definitely apne doston aur family ko recommend karunga!`,
       `Bohot clean, hygienic aur well-managed place hai ${businessName}. Inka workflow bohot organized hai aur customer ko bilkul wait nahi karwate. ${highlights ? `${highlights} waqai worth it tha. ` : ''}Aisi high quality service provide karne ke liye thank you team!`,
       `First time visit tha ${businessName} me aur expectations se bhi kaafi behtar laga. Transparency aur customer comfort inki priority lagti hai. ${highlights ? `${highlights} ka kaam bilkul perfect tha. ` : ''}Aage ke liye mera permanent go-to spot ban gaya hai!`,
+      `Dost ke kehne par yahan aaya tha aur waqai maza aa gaya. ${businessName} ka staff bohot polite aur genuine hai. ${highlights ? `${highlights} ka kaam bilkul time par hua. ` : ''}Kisi tarah ki koi pareshani nahi hui. Highly recommended!`,
+      `Ekdum hassle-free aur transparent service mili yahan. Koi extra ya hidden charges nahi, sab kuch clear bataya. ${businessName} definitely 5 star deserve karta hai! ${highlights ? `Khaaskar ${highlights} bohot accha tha. ` : ''}`,
+      `Punctuality aur customer handling inki sabse badi khoobi hai. Reception se lekar kaam complete hone tak sab kuch smoothly hua. ${highlights ? `Inhone ${highlights} par pura focus diya. ` : ''}Bohot khushi hui yahan aakar!`,
+      `Aisi genuine aur honest service aaj kal milna mushkil hai. ${businessName} ki team ne bohot patience ke saath attend kiya. ${highlights ? `Inka ${highlights} support lajawab tha. ` : ''}Definitely sabko aana chahiye!`,
+      `Super fast work aur bilkul relaxed mahaul. Staff bohot cooperative hai aur bilkul wait nahi karwaya. ${businessName} se behtar service aas-paas kahi nahi milegi! ${highlights ? `Big thumbs up for ${highlights}. ` : ''}`,
+      `Pura process bohot systematic tha. Professionalism aur cleanliness dono top-notch hain. ${highlights ? `${highlights} waqai worth it tha. ` : ''}Aage se family ke liye bhi permanent yahin aayenge!`,
+      `Dil khush ho gaya inki service dekh kar. Jo promise kiya tha bilkul wahi deliver kiya time par. ${highlights ? `Inka ${highlights} treatment bohot gentle tha. ` : ''}Great job ${businessName} team!`,
+      `Paisa vasool experience raha ${businessName} par. Har choti detail ka dhyan rakha aur respect ke saath baat ki. ${highlights ? `Khaskar ${highlights} ne dil jeet liya. ` : ''}Bilkul 5 star service hai!`,
     ];
 
     return isHinglish

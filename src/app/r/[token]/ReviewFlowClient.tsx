@@ -211,7 +211,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           selected_aspects: selectedAspects,
           selected_tags: selectedTags,
           selected_language: selectedLanguage,
-          attempt: nextAttempt,
+          attempt: Date.now() + Math.floor(Math.random() * 10000),
         }),
       });
 
