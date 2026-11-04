@@ -111,6 +111,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           selected_aspects: selectedAspects,
           selected_tags: selectedTags,
           selected_language: langToUse,
+          attempt: Date.now() + Math.floor(Math.random() * 1000),
         }),
       });
 
@@ -174,6 +175,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
           selected_aspects: selectedAspects,
           selected_tags: selectedTags,
           selected_language: newLang,
+          attempt: Date.now() + Math.floor(Math.random() * 1000),
         }),
       });
 

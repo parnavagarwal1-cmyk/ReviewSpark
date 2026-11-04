@@ -107,9 +107,11 @@ export function resetGeminiKeyCooldowns(): void {
   keyStateMap.clear();
 }
 
+let roundRobinCounter = 0;
+
 /**
  * Returns Gemini keys prioritized:
- * 1. Healthy keys first
+ * 1. Healthy keys first (rotated in round-robin order so every request uses the next key)
  * 2. Keys in cooldown ordered by oldest failure (soonest to recover)
  */
 export function getOrderedGeminiKeys(): string[] {
@@ -117,21 +119,37 @@ export function getOrderedGeminiKeys(): string[] {
   if (keys.length <= 1) return keys;
 
   const now = Date.now();
-  return [...keys].sort((a, b) => {
-    const stateA = keyStateMap.get(a);
-    const stateB = keyStateMap.get(b);
+  const healthyKeys: string[] = [];
+  const coolingKeys: string[] = [];
 
-    const isCoolingA = stateA && now - stateA.failedAt < RATE_LIMIT_COOLDOWN_MS;
-    const isCoolingB = stateB && now - stateB.failedAt < RATE_LIMIT_COOLDOWN_MS;
+  for (const k of keys) {
+    const st = keyStateMap.get(k);
+    if (st && now - st.failedAt < RATE_LIMIT_COOLDOWN_MS) {
+      coolingKeys.push(k);
+    } else {
+      healthyKeys.push(k);
+    }
+  }
 
-    if (!isCoolingA && isCoolingB) return -1;
-    if (isCoolingA && !isCoolingB) return 1;
+  // Round-robin rotation across healthy keys: distributes load evenly across all keys
+  let orderedHealthy: string[] = [];
+  if (healthyKeys.length > 0) {
+    const startIdx = roundRobinCounter % healthyKeys.length;
+    roundRobinCounter = (roundRobinCounter + 1) % 1000000;
+    orderedHealthy = [
+      ...healthyKeys.slice(startIdx),
+      ...healthyKeys.slice(0, startIdx),
+    ];
+  }
 
-    // Both cooling or both healthy: oldest failedAt first
-    const timeA = stateA?.failedAt ?? 0;
-    const timeB = stateB?.failedAt ?? 0;
+  // Sort cooling keys by oldest failure first (soonest to recover)
+  coolingKeys.sort((a, b) => {
+    const timeA = keyStateMap.get(a)?.failedAt ?? 0;
+    const timeB = keyStateMap.get(b)?.failedAt ?? 0;
     return timeA - timeB;
   });
+
+  return [...orderedHealthy, ...coolingKeys];
 }
 
 function getGeminiClient(apiKey: string): OpenAI {
@@ -153,8 +171,13 @@ function getGeminiClient(apiKey: string): OpenAI {
  * Defaults to 'gemini-1.5-flash' — Google's fastest, highest-speed production model.
  */
 export function getGeminiModel(): string {
-  const envModel = process.env.GEMINI_MODEL || process.env.OPENAI_MODEL;
-  if (envModel && !envModel.includes('3.5-flash-lite')) {
+  const envModel = process.env.GEMINI_MODEL;
+  if (
+    envModel &&
+    (envModel.startsWith('gemini-') ||
+      envModel.includes('flash') ||
+      envModel.includes('pro'))
+  ) {
     return envModel;
   }
   return 'gemini-1.5-flash';
@@ -376,6 +399,25 @@ export interface DraftResult {
   estimated_cost_usd: number;
 }
 
+// ── Anti-Duplication Cache (Stores recent review openings per business) ──────
+const recentReviewsCache = new Map<string, string[]>();
+
+export function recordRecentReview(businessKey: string, draft: string): void {
+  if (!draft || draft.length < 20) return;
+  const key = businessKey.toLowerCase().trim();
+  const list = recentReviewsCache.get(key) || [];
+  const snippet = draft.replace(/\s+/g, ' ').trim().slice(0, 90);
+  if (!list.includes(snippet)) {
+    list.unshift(snippet);
+    if (list.length > 15) list.pop();
+    recentReviewsCache.set(key, list);
+  }
+}
+
+export function getRecentReviews(businessKey: string): string[] {
+  return recentReviewsCache.get(businessKey.toLowerCase().trim()) || [];
+}
+
 const STAR_SENTIMENTS: Record<number, string> = {
   1: 'very dissatisfied (1 out of 5 stars - polite critical feedback)',
   2: 'somewhat dissatisfied (2 out of 5 stars - needs improvement)',
@@ -385,13 +427,20 @@ const STAR_SENTIMENTS: Record<number, string> = {
 };
 
 const STYLE_PERSPECTIVES = [
-  'Perspective: First-time visitor who was pleasantly surprised by the warm reception, speed, and ease of service.',
-  'Perspective: Straight-to-the-point customer focusing strictly on efficiency, punctuality, and clean environment without fluff.',
-  'Perspective: Local resident from the neighborhood who appreciates having such a reliable, genuine service nearby.',
-  'Perspective: Relieved customer whose specific issue was diagnosed and handled gently, patiently, and without discomfort.',
-  'Perspective: Value-conscious customer who appreciates transparent explanations, fair pricing, and zero pushiness.',
-  'Perspective: Walk-in or appointment visitor who noticed great attention to hygiene, respectful staff, and smooth workflow.',
-  'Perspective: Highly satisfied customer who felt comfortable from start to finish and would bring family members here.',
+  'Angle: First-time visitor who was pleasantly surprised by the warm reception, speed, and ease of service.',
+  'Angle: Straight-to-the-point customer focusing strictly on efficiency, punctuality, and clean environment without fluff.',
+  'Angle: Local resident from the neighborhood who appreciates having such a reliable, genuine service nearby.',
+  'Angle: Relieved customer whose specific issue was diagnosed and handled gently, patiently, and without discomfort.',
+  'Angle: Value-conscious customer who appreciates transparent explanations, fair pricing, and zero pushiness.',
+  'Angle: Detail-oriented visitor who noticed great attention to hygiene, sterilized setup, and smooth workflow.',
+  'Angle: Highly satisfied customer who felt comfortable from start to finish and would bring family members here.',
+  'Angle: Busy professional praising quick turnaround time, seamless booking, and zero waiting in line.',
+  'Angle: Customer who came via a strong personal recommendation from a friend and found expectations exceeded.',
+  'Angle: Walk-in customer accommodated with remarkable warmth and efficiency on very short notice.',
+  'Angle: Modern customer praising polite staff coordination, prompt communication, and clear explanations.',
+  'Angle: Thorough customer who appreciated high-grade equipment, expert craftsmanship, and gentle care.',
+  'Angle: Thoughtful customer noting how the staff took time to listen attentively without any rush or pressure.',
+  'Angle: Return client noticing consistent top-tier standards, welcoming atmosphere, and genuine honesty.',
 ];
 
 const LENGTH_PROFILES = [
@@ -534,6 +583,11 @@ CRITICAL SINGLE-LANGUAGE RULE:
 - BOTH Draft 1 and Draft 2 MUST be written 100% in ${selectedLang.toUpperCase()} (${langDesc}).
 - Do NOT output two different languages. Both options must be in ${selectedLang}.
 
+CRITICAL ANTI-REPETITION & DIVERSITY RULE:
+- Every generated review MUST be 100% unique, fresh, and distinctly phrased.
+- NEVER start with the same opening words ("I visited...", "Great experience..."). Start directly with specific, natural observations.
+- Draft 1 and Draft 2 must take two completely different angles and phrasing styles.
+
 CRITICAL SEO & GOOGLE MAPS RANKING RULE:
 - Naturally weave 1 or 2 of the provided "Service SEO Keywords" or local area landmarks into the sentences (e.g. naming the exact service received or neighborhood).
 - Keep it 100% conversational and authentic — never stuff keywords unnaturally.
@@ -541,6 +595,15 @@ CRITICAL SEO & GOOGLE MAPS RANKING RULE:
 LENGTH: ~50 words each (approx 45–55 words, 3 to 4 full sentences). Do NOT make them short one-liners.
 Tone: ${sentiment} (${rating}/5 stars).
 Rules: Start directly with observations. Never use clichés ("I recently visited", "Top notch service"). ${emojiDirective}. No fake facts.`;
+
+  const recent = getRecentReviews(businessName);
+  const deduplicationPrompt =
+    recent.length > 0
+      ? `\nCRITICAL ANTI-DUPLICATION RULE (DO NOT REPEAT):
+The following reviews were recently generated for this business:
+${recent.slice(0, 5).map((r, i) => `Previous #${i + 1}: "${r}..."`).join('\n')}
+DO NOT reuse the same opening line, same sentence structure, or same phrasing as above. Write 2 completely fresh, original reviews with a totally unique opening and wording.\n`
+      : '';
 
   const userPrompt = `Business: ${businessName}
 ${categoryContext}
@@ -550,11 +613,12 @@ ${highlightsContext}
 ${aspectsContext}
 ${tagsContext}
 ${customerNoteContext}
+${deduplicationPrompt}
 Perspective / Angle: ${stylePerspective}
 Rating: ${rating}/5 stars (${sentiment})
 Requested Language: ${selectedLang}
 Rewrite Attempt: ${options.attempt ?? 1}
-Variety seed: ${variationSeed}-${Date.now()}
+Unique Request Seed: ${variationSeed}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}
 Provide 2 fresh and completely unique reviews.
 
 Output format:
@@ -568,11 +632,15 @@ Draft 2:`;
         { role: 'user', content: userPrompt },
       ],
       max_tokens: 350,
-      temperature: 0.85,
+      temperature: 0.9,
     });
 
     const content = response.choices[0]?.message?.content ?? '';
     const drafts = parseDrafts(content);
+
+    // Save to anti-duplication memory so subsequent customers get different phrasing
+    recordRecentReview(businessName, drafts[0]);
+    recordRecentReview(businessName, drafts[1]);
 
     const tokensPrompt = response.usage?.prompt_tokens ?? 0;
     const tokensCompletion = response.usage?.completion_tokens ?? 0;
@@ -589,6 +657,8 @@ Draft 2:`;
     // If all AI calls failed, timed out, or hit limits, provide instant high-quality fallback reviews
     console.warn('[AI Drafts] Network/AI unavailable, using instant contextual fallback:', err);
     const drafts = generateInstantFallbackDrafts(businessName, rating, selectedLang, selectedLang, options);
+    recordRecentReview(businessName, drafts[0]);
+    recordRecentReview(businessName, drafts[1]);
     return {
       drafts,
       tokens_prompt: 0,
@@ -636,7 +706,10 @@ export function generateInstantFallbackDrafts(
   lang2 = 'Hinglish',
   options?: GenerateDraftOptions
 ): [string, string] {
-  const attemptSeed = options?.attempt ?? Math.floor(Math.random() * 100);
+  const attemptSeed =
+    typeof options?.attempt === 'number'
+      ? options.attempt
+      : Math.floor(Math.random() * 100000) + Date.now();
   const kwList = options?.serviceKeywords
     ? options.serviceKeywords.split(/[,|;]+/).map((k) => k.trim()).filter(Boolean)
     : [];
