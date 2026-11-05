@@ -129,9 +129,12 @@ export async function POST(request: NextRequest) {
 
     const fullAddress = addressParts.length > 0 ? addressParts.join(', ') : null;
 
-    // Default aspects & tags if none provided
-    const aspects = Array.isArray(body.aspects) ? body.aspects.slice(0, 3) : [];
-    const ratingTags = body.rating_tags || {};
+    // Aspects & tags configuration (supports custom aspects and highlight tags)
+    const aspects = Array.isArray(body.aspects) ? body.aspects.slice(0, 12) : [];
+    const ratingTags = {
+      ...(body.rating_tags || {}),
+      ...(Array.isArray(body.highlight_tags) ? { highlight_tags: body.highlight_tags.slice(0, 20) } : {}),
+    };
 
     const fullPayload: Record<string, unknown> = {
       public_token: publicToken,

@@ -285,6 +285,7 @@ function AddBusinessModal({ onClose, onSuccess }: AddBusinessModalProps) {
         primary_language: formData.primary_language.trim() || 'English',
         secondary_language: formData.secondary_language.trim() || 'Hinglish',
         aspects: formData.aspects,
+        highlight_tags: formData.highlight_tags,
         rating_tags: formData.rating_tags,
         show_aspects: formData.show_aspects,
         show_tags: formData.show_tags,

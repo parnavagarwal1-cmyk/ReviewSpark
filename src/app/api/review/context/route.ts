@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { recordEvent } from '@/lib/analytics';
 import { getClientIp } from '@/lib/rateLimit';
+import { DEFAULT_ASPECTS, DEFAULT_HIGHLIGHT_TAGS } from '@/lib/aspects';
 
 // GET /api/review/context?token=... — resolves a public token to business context
 // Called by the public review page on load
@@ -80,6 +81,18 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Extract highlight_tags from rating_tags if present, otherwise default
+  let highlightTags: string[] = [];
+  if (ratingTags && Array.isArray((ratingTags as Record<string, unknown>).highlight_tags)) {
+    highlightTags = (ratingTags as Record<string, unknown>).highlight_tags as string[];
+  }
+  if (!highlightTags || highlightTags.length === 0) {
+    highlightTags = DEFAULT_HIGHLIGHT_TAGS;
+  }
+
+  const effectiveAspects =
+    aspects && aspects.length > 0 ? aspects : DEFAULT_ASPECTS;
+
   // Return only safe public fields
   return NextResponse.json(
     {
@@ -88,7 +101,8 @@ export async function GET(request: NextRequest) {
       category: data.category,
       google_review_destination: data.google_review_destination,
       public_token: token,
-      aspects: aspects || [],
+      aspects: effectiveAspects,
+      highlight_tags: highlightTags,
       rating_tags: ratingTags || {},
       show_aspects: showAspects,
       show_tags: showTags,

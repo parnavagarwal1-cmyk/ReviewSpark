@@ -19,6 +19,7 @@ export interface Business {
   primary_language?: string | null;
   secondary_language?: string | null;
   aspects?: string[] | null;
+  highlight_tags?: string[] | null;
   rating_tags?: Record<string, string[]> | null;
   show_aspects?: boolean;
   show_tags?: boolean;
@@ -84,6 +85,7 @@ export interface CreateBusinessInput {
   primary_language?: string;
   secondary_language?: string;
   aspects?: string[];
+  highlight_tags?: string[];
   rating_tags?: Record<string, string[]>;
   show_aspects?: boolean;
   show_tags?: boolean;
@@ -103,6 +105,7 @@ export interface UpdateBusinessInput {
   primary_language?: string;
   secondary_language?: string;
   aspects?: string[];
+  highlight_tags?: string[];
   rating_tags?: Record<string, string[]>;
   show_aspects?: boolean;
   show_tags?: boolean;
@@ -132,6 +135,7 @@ export interface ReviewContextOutput {
   google_review_destination: string;
   public_token: string;
   aspects?: string[];
+  highlight_tags?: string[];
   rating_tags?: Record<string, string[]>;
   show_aspects?: boolean;
   show_tags?: boolean;

@@ -93,6 +93,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
           primary_language: formData.primary_language.trim() || 'English',
           secondary_language: formData.secondary_language.trim() || 'Hinglish',
           aspects: formData.aspects,
+          highlight_tags: formData.highlight_tags,
           rating_tags: formData.rating_tags,
           show_aspects: formData.show_aspects,
           show_tags: formData.show_tags,
@@ -213,8 +214,9 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
               service_keywords: business.service_keywords || '',
               primary_language: business.primary_language || 'English',
               secondary_language: business.secondary_language || 'Hinglish',
-              aspects: business.aspects || ['Food quality', 'Staff behavior', 'Cleanliness'],
-              rating_tags: business.rating_tags || DEFAULT_RATING_TAGS,
+              aspects: business.aspects && business.aspects.length > 0 ? business.aspects : undefined,
+              highlight_tags: (business.rating_tags as Record<string, unknown> | undefined)?.highlight_tags as string[] | undefined,
+              rating_tags: business.rating_tags || undefined,
               show_aspects: business.show_aspects !== false,
               show_tags: business.show_tags !== false,
               custom_context: business.custom_context || '',
@@ -275,7 +277,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
               {/* Aspects Chips Preview */}
               <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '0.5rem' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)', marginBottom: '4px' }}>
-                  Aspects ({business.aspects?.length || 0}/3):
+                  ⭐ Aspects ({business.aspects?.length || 0}):
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                   {(business.aspects || []).map((a, i) => (
@@ -286,6 +288,7 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
                         padding: '2px 8px',
                         borderRadius: '12px',
                         background: 'rgba(99, 102, 241, 0.15)',
+                        border: '1px solid rgba(99, 102, 241, 0.3)',
                         color: 'var(--admin-text)',
                       }}
                     >
@@ -293,31 +296,35 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
                     </span>
                   ))}
                   {(!business.aspects || business.aspects.length === 0) && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>None set</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>None set (using defaults)</span>
                   )}
                 </div>
               </div>
 
-              {/* 5-Star Tags Preview */}
+              {/* Highlight Tags Preview */}
               <div style={{ borderTop: '1px solid var(--admin-border)', paddingTop: '0.5rem' }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--admin-text-muted)', marginBottom: '4px' }}>
-                  5★ Tags ({business.rating_tags?.['5']?.length || 0}/3):
+                  🏷️ Highlight Tags ({((business.rating_tags as Record<string, unknown> | undefined)?.highlight_tags as string[] | undefined)?.length || 0}):
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {(business.rating_tags?.['5'] || []).map((t, i) => (
+                  {(((business.rating_tags as Record<string, unknown> | undefined)?.highlight_tags as string[] | undefined) || []).map((t, i) => (
                     <span
                       key={i}
                       style={{
                         fontSize: '0.75rem',
                         padding: '2px 8px',
                         borderRadius: '12px',
-                        background: 'rgba(245, 158, 11, 0.15)',
+                        background: 'rgba(255, 255, 255, 0.06)',
+                        border: '1px solid rgba(255, 255, 255, 0.14)',
                         color: 'var(--admin-text)',
                       }}
                     >
                       {t}
                     </span>
                   ))}
+                  {!((business.rating_tags as Record<string, unknown> | undefined)?.highlight_tags as string[] | undefined)?.length && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>None set (using defaults)</span>
+                  )}
                 </div>
               </div>
 

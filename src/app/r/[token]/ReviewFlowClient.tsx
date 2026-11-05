@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { DEFAULT_ASPECTS, DEFAULT_HIGHLIGHT_TAGS, parseAspectItem } from '@/lib/aspects';
 
 interface BusinessContext {
   business_name: string;
@@ -9,6 +10,7 @@ interface BusinessContext {
   google_review_destination: string;
   public_token: string;
   aspects?: string[];
+  highlight_tags?: string[];
   rating_tags?: Record<string, string[]>;
   show_aspects?: boolean;
   show_tags?: boolean;
@@ -37,29 +39,28 @@ const LOADING_PHRASES = [
   'Polishing your review…',
 ];
 
-const DEFAULT_ASPECT_ITEMS = [
-  { key: 'food', label: 'Food', icon: '🍲' },
-  { key: 'service', label: 'Service', icon: '🤝' },
-  { key: 'ambience', label: 'Ambience', icon: '✨' },
-  { key: 'value', label: 'Value for money', icon: '✦' },
-  { key: 'cleanliness', label: 'Cleanliness', icon: '🧹' },
-];
-
-const DEFAULT_HIGHLIGHT_TAGS = [
-  'Outstanding Taste',
-  'Fresh & Flavorful',
-  'Memorable Experience',
-  'Friendly Staff',
-  'Great Value',
-  'Hygienic & Clean',
-];
-
 type Step = 'loading' | 'error' | 'select-rating' | 'generating' | 'select-draft' | 'continue';
 
 export default function ReviewFlowClient({ token }: { token: string }) {
   const [context, setContext] = useState<BusinessContext | null>(null);
   const [loadError, setLoadError] = useState('');
   const [step, setStep] = useState<Step>('loading');
+
+  // Dynamically compute aspects and highlight tags from business configuration
+  const aspectItems = useMemo(() => {
+    const rawList =
+      context?.aspects && context.aspects.length > 0
+        ? context.aspects
+        : DEFAULT_ASPECTS;
+    return rawList.map((raw, idx) => parseAspectItem(raw, idx));
+  }, [context?.aspects]);
+
+  const highlightTags = useMemo(() => {
+    if (context?.highlight_tags && context.highlight_tags.length > 0) {
+      return context.highlight_tags;
+    }
+    return DEFAULT_HIGHLIGHT_TAGS;
+  }, [context?.highlight_tags]);
 
   const [selectedRating, setSelectedRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -148,7 +149,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     const ratedAspectsList = Object.entries(aspectRatings)
       .filter(([_, score]) => score >= 3)
       .map(([k, score]) => {
-        const item = DEFAULT_ASPECT_ITEMS.find((a) => a.key === k);
+        const item = aspectItems.find((a) => a.key === k);
         return item ? `${item.label} (${score}/5)` : k;
       });
 
@@ -222,7 +223,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     const ratedAspectsList = Object.entries(aspectRatings)
       .filter(([_, score]) => score >= 3)
       .map(([k, score]) => {
-        const item = DEFAULT_ASPECT_ITEMS.find((a) => a.key === k);
+        const item = aspectItems.find((a) => a.key === k);
         return item ? `${item.label} (${score}/5)` : k;
       });
     const combinedAspects = Array.from(new Set([...selectedAspects, ...ratedAspectsList]));
@@ -266,7 +267,7 @@ export default function ReviewFlowClient({ token }: { token: string }) {
     const ratedAspectsList = Object.entries(aspectRatings)
       .filter(([_, score]) => score >= 3)
       .map(([k, score]) => {
-        const item = DEFAULT_ASPECT_ITEMS.find((a) => a.key === k);
+        const item = aspectItems.find((a) => a.key === k);
         return item ? `${item.label} (${score}/5)` : k;
       });
     const combinedAspects = Array.from(new Set([...selectedAspects, ...ratedAspectsList]));
@@ -530,69 +531,70 @@ export default function ReviewFlowClient({ token }: { token: string }) {
             {selectedRating > 0 && step === 'select-rating' && (
               <div className="rb-details-container">
                 {/* 1. TELL US MORE (Multi-aspect Mini Stars) */}
-                <div className="rb-aspects-card">
-                  <div className="rb-card-section-label">TELL US MORE</div>
-                  <div className="rb-aspects-list">
-                    {DEFAULT_ASPECT_ITEMS.map((item) => {
-                      const curRating = aspectRatings[item.key] || 0;
-                      return (
-                        <div key={item.key} className="rb-aspect-row">
-                          <span className="rb-aspect-title">
-                            <span className="rb-aspect-icon">{item.icon}</span>
-                            <span>{item.label}</span>
-                          </span>
-                          <div className="rb-mini-stars">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                className="rb-mini-star-btn"
-                                onClick={() => handleAspectStarClick(item.key, s)}
-                                aria-label={`${item.label} ${s} stars`}
-                              >
-                                <svg
-                                  width="20"
-                                  height="20"
-                                  viewBox="0 0 24 24"
-                                  fill={curRating >= s ? '#6c5ce7' : 'none'}
-                                  stroke={curRating >= s ? '#6c5ce7' : '#34325a'}
-                                  strokeWidth="1.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                {context?.show_aspects !== false && aspectItems.length > 0 && (
+                  <div className="rb-aspects-card">
+                    <div className="rb-card-section-label">TELL US MORE</div>
+                    <div className="rb-aspects-list">
+                      {aspectItems.map((item) => {
+                        const curRating = aspectRatings[item.key] || 0;
+                        return (
+                          <div key={item.key} className="rb-aspect-row">
+                            <span className="rb-aspect-title">
+                              <span className="rb-aspect-icon">{item.icon}</span>
+                              <span>{item.label}</span>
+                            </span>
+                            <div className="rb-mini-stars">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  className="rb-mini-star-btn"
+                                  onClick={() => handleAspectStarClick(item.key, s)}
+                                  aria-label={`${item.label} ${s} stars`}
                                 >
-                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                </svg>
-                              </button>
-                            ))}
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill={curRating >= s ? '#6c5ce7' : 'none'}
+                                    stroke={curRating >= s ? '#6c5ce7' : '#34325a'}
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                  </svg>
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 2. WHAT STOOD OUT? (Pills) */}
-                <div className="rb-standout-section">
-                  <div className="rb-card-section-label">WHAT STOOD OUT?</div>
-                  <div className="rb-pills-wrap">
-                    {(context?.aspects && context.aspects.length > 0
-                      ? context.aspects
-                      : DEFAULT_HIGHLIGHT_TAGS
-                    ).map((tag, idx) => {
-                      const isSelected = selectedTags.includes(tag) || selectedAspects.includes(tag);
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          className={`rb-choice-pill ${isSelected ? 'active' : ''}`}
-                          onClick={() => toggleTag(tag)}
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
+                {context?.show_tags !== false && highlightTags.length > 0 && (
+                  <div className="rb-standout-section">
+                    <div className="rb-card-section-label">WHAT STOOD OUT?</div>
+                    <div className="rb-pills-wrap">
+                      {highlightTags.map((tag, idx) => {
+                        const isSelected = selectedTags.includes(tag) || selectedAspects.includes(tag);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            className={`rb-choice-pill ${isSelected ? 'active' : ''}`}
+                            onClick={() => toggleTag(tag)}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 3. ADD A NOTE (optional) */}
                 <div className="rb-note-section">

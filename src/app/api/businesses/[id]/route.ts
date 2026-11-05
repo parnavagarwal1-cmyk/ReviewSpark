@@ -88,6 +88,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       }
     }
 
+    if (body.highlight_tags !== undefined) {
+      const baseTags = (body.rating_tags || (updateData.rating_tags as Record<string, string[]>) || {});
+      updateData.rating_tags = {
+        ...baseTags,
+        highlight_tags: body.highlight_tags.slice(0, 20),
+      };
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
     }

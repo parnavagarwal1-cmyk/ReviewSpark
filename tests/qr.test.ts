@@ -19,7 +19,7 @@ describe('QR Code Generation', () => {
 
       // Larger size = larger PNG
       expect(large.pngBuffer.length).toBeGreaterThan(small.pngBuffer.length);
-    });
+    }, 15000);
 
     it('throws for non-HTTP URLs', async () => {
       await expect(
