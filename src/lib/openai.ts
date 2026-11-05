@@ -509,7 +509,7 @@ export function estimateCost(
 }
 
 export interface DraftResult {
-  drafts: [string, string];
+  drafts: [string, string, string];
   tokens_prompt: number;
   tokens_completion: number;
   model: string;
@@ -664,21 +664,23 @@ export async function generateReviewDrafts(
     ? 'Hindi in Devanagari script'
     : 'natural fluent English';
 
-  // Select TWO distinct perspectives so Draft 1 and Draft 2 have completely different flavors
+  // Select THREE distinct perspectives so Draft 1, Draft 2, and Draft 3 have completely different flavors
   const shuffledPerspectives = [...STYLE_PERSPECTIVES].sort(() => Math.random() - 0.5);
   const perspective1 = shuffledPerspectives[0];
   const perspective2 = shuffledPerspectives[1];
+  const perspective3 = shuffledPerspectives[2] || shuffledPerspectives[0];
   const emojiDirective = getEmojiDirective(rating);
   const variationSeed = Math.random().toString(36).substring(2, 8);
 
   const systemPrompt = `You are an authentic, thoughtful Google Review writer for Indian local businesses.
-Write EXACTLY 2 distinct, human review options in ${selectedLang}:
-- "Draft 1:" around 48–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective1}
-- "Draft 2:" around 48–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective2}
+Write EXACTLY 3 distinct, human review options in ${selectedLang}:
+- "Draft 1:" around 45–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective1}
+- "Draft 2:" around 45–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective2}
+- "Draft 3:" around 45–55 words (strictly 4 complete sentences) in ${selectedLang}. Focus: ${perspective3}
 
 CRITICAL SINGLE-LANGUAGE RULE:
-- BOTH Draft 1 and Draft 2 MUST be written 100% in ${selectedLang.toUpperCase()} (${langDesc}).
-- Do NOT output two different languages. Both options must be in ${selectedLang}.
+- ALL THREE Draft 1, Draft 2, and Draft 3 MUST be written 100% in ${selectedLang.toUpperCase()} (${langDesc}).
+- Do NOT output different languages. All 3 options must be in ${selectedLang}.
 
 CRITICAL MANDATORY LENGTH RULE (APPROX 50 WORDS / 4 SENTENCES):
 - Each draft MUST be between 45 and 55 words long (4 full, descriptive sentences).
@@ -712,7 +714,7 @@ Tone: ${sentiment} (${rating}/5 stars). ${emojiDirective}. No fabricated claims.
       ? `\nCRITICAL ANTI-DUPLICATION RULE (DO NOT REPEAT):
 The following reviews were recently generated for this business:
 ${recent.slice(0, 5).map((r, i) => `Previous #${i + 1}: "${r}..."`).join('\n')}
-DO NOT reuse the same opening line, same sentence structure, or same phrasing as above. Write 2 completely fresh, original reviews with a totally unique opening and wording.\n`
+DO NOT reuse the same opening line, same sentence structure, or same phrasing as above. Write 3 completely fresh, original reviews with totally unique openings and wording.\n`
       : '';
 
   const userPrompt = `Business: ${businessName}
@@ -726,15 +728,17 @@ ${customerNoteContext}
 ${deduplicationPrompt}
 Draft 1 Theme: ${perspective1}
 Draft 2 Theme: ${perspective2}
+Draft 3 Theme: ${perspective3}
 Rating: ${rating}/5 stars (${sentiment})
 Requested Language: ${selectedLang}
 Rewrite Attempt: ${options.attempt ?? 1}
 Unique Request Seed: ${variationSeed}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}
-Provide 2 fresh and completely unique reviews.
+Provide 3 fresh and completely unique reviews.
 
 Output format:
 Draft 1:
-Draft 2:`;
+Draft 2:
+Draft 3:`;
 
   try {
     const { response, model } = await executeChatCompletionWithFallback({
@@ -742,7 +746,7 @@ Draft 2:`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 500,
+      max_tokens: 650,
       temperature: 1.0,
     });
 
@@ -752,6 +756,7 @@ Draft 2:`;
     // Save to anti-duplication memory so subsequent customers get different phrasing
     recordRecentReview(businessName, drafts[0]);
     recordRecentReview(businessName, drafts[1]);
+    recordRecentReview(businessName, drafts[2]);
 
     const tokensPrompt = response.usage?.prompt_tokens ?? 0;
     const tokensCompletion = response.usage?.completion_tokens ?? 0;
@@ -770,6 +775,7 @@ Draft 2:`;
     const drafts = generateInstantFallbackDrafts(businessName, rating, selectedLang, selectedLang, options);
     recordRecentReview(businessName, drafts[0]);
     recordRecentReview(businessName, drafts[1]);
+    recordRecentReview(businessName, drafts[2]);
     return {
       drafts,
       tokens_prompt: 0,
@@ -781,12 +787,12 @@ Draft 2:`;
 }
 
 /**
- * Picks two distinct elements from an array with uniform pseudo-random hash distribution.
- * Every index is equally likely to be picked.
+ * Picks three distinct elements from an array with uniform pseudo-random hash distribution.
  */
-function pickTwoDistinct<T>(arr: T[], seed?: number): [T, T] {
-  if (arr.length <= 1) return [arr[0], arr[0]];
-  if (arr.length === 2) return [arr[0], arr[1]];
+function pickThreeDistinct<T>(arr: T[], seed?: number): [T, T, T] {
+  if (arr.length <= 1) return [arr[0], arr[0], arr[0]];
+  if (arr.length === 2) return [arr[0], arr[1], arr[0]];
+  if (arr.length === 3) return [arr[0], arr[1], arr[2]];
 
   let hash = 0;
   if (typeof seed === 'number' && Number.isFinite(seed) && seed > 0) {
@@ -798,11 +804,16 @@ function pickTwoDistinct<T>(arr: T[], seed?: number): [T, T] {
   }
 
   const i1 = Math.abs(hash) % arr.length;
-  // Offset is strictly between 1 and arr.length - 1 so i2 !== i1
-  const offset = 1 + (Math.abs(Math.floor(hash / arr.length)) % (arr.length - 1));
-  const i2 = (i1 + offset) % arr.length;
+  const off1 = 1 + (Math.abs(Math.floor(hash / arr.length)) % (arr.length - 1));
+  const i2 = (i1 + off1) % arr.length;
+  const off2 = 1 + (Math.abs(Math.floor(hash / (arr.length * 3 + 7))) % (arr.length - 2));
+  let i3 = (i2 + off2) % arr.length;
+  if (i3 === i1 || i3 === i2) {
+    i3 = (i3 + 1) % arr.length;
+    if (i3 === i1 || i3 === i2) i3 = (i3 + 1) % arr.length;
+  }
 
-  return [arr[i1], arr[i2]];
+  return [arr[i1], arr[i2], arr[i3]];
 }
 
 /**
@@ -815,7 +826,7 @@ export function generateInstantFallbackDrafts(
   lang1 = 'English',
   lang2 = 'Hinglish',
   options?: GenerateDraftOptions
-): [string, string] {
+): [string, string, string] {
   const attemptSeed =
     typeof options?.attempt === 'number'
       ? options.attempt
@@ -868,8 +879,8 @@ export function generateInstantFallbackDrafts(
     ];
 
     return isHinglish
-      ? pickTwoDistinct(hiOptions, attemptSeed)
-      : pickTwoDistinct(enOptions, attemptSeed);
+      ? pickThreeDistinct(hiOptions, attemptSeed)
+      : pickThreeDistinct(enOptions, attemptSeed);
   } else if (rating === 3) {
     const en3Options = [
       `Decent experience overall at ${businessName}. While the main service was satisfactory, the waiting time was longer than expected and staff coordination could have been smoother. Hope to see better turnaround time in the future.`,
@@ -885,8 +896,8 @@ export function generateInstantFallbackDrafts(
     ];
 
     return isHinglish
-      ? pickTwoDistinct(hi3Options, attemptSeed)
-      : pickTwoDistinct(en3Options, attemptSeed);
+      ? pickThreeDistinct(hi3Options, attemptSeed)
+      : pickThreeDistinct(en3Options, attemptSeed);
   } else {
     const enBadOptions = [
       `Disappointed with the experience at ${businessName}. The wait time was excessively long and the communication was lacking. Management needs to pay more attention to customer satisfaction and service speed.`,
@@ -902,29 +913,32 @@ export function generateInstantFallbackDrafts(
     ];
 
     return isHinglish
-      ? pickTwoDistinct(hiBadOptions, attemptSeed)
-      : pickTwoDistinct(enBadOptions, attemptSeed);
+      ? pickThreeDistinct(hiBadOptions, attemptSeed)
+      : pickThreeDistinct(enBadOptions, attemptSeed);
   }
 }
 
 /**
- * Parses the two draft options from the model's response.
+ * Parses the three draft options from the model's response.
  * Falls back gracefully if the model doesn't follow the exact format.
  */
-function parseDrafts(content: string): [string, string] {
-  // Try structured parsing first
+function parseDrafts(content: string): [string, string, string] {
+  // Try structured regex parsing first
   const draft1Match = content.match(/Draft\s*1\s*[:：]\s*([\s\S]*?)(?=Draft\s*2\s*[:：]|$)/i);
-  const draft2Match = content.match(/Draft\s*2\s*[:：]\s*([\s\S]*?)$/i);
+  const draft2Match = content.match(/Draft\s*2\s*[:：]\s*([\s\S]*?)(?=Draft\s*3\s*[:：]|$)/i);
+  const draft3Match = content.match(/Draft\s*3\s*[:：]\s*([\s\S]*?)$/i);
 
   let d1 = draft1Match?.[1]?.trim() ?? '';
   let d2 = draft2Match?.[1]?.trim() ?? '';
+  let d3 = draft3Match?.[1]?.trim() ?? '';
 
   // Clean any leading/trailing quotes or markdown backticks
   d1 = d1.replace(/^["'`]+|["'`]+$/g, '').trim();
   d2 = d2.replace(/^["'`]+|["'`]+$/g, '').trim();
+  d3 = d3.replace(/^["'`]+|["'`]+$/g, '').trim();
 
-  if (d1 && d2) {
-    return [d1, d2];
+  if (d1 && d2 && d3) {
+    return [d1, d2, d3];
   }
 
   // Fallback: split by double newline
@@ -933,13 +947,15 @@ function parseDrafts(content: string): [string, string] {
     .map((p) => p.replace(/^Draft\s*\d+\s*[:：]\s*/i, '').replace(/^["'`]+|["'`]+$/g, '').trim())
     .filter(Boolean);
 
-  if (parts.length >= 2) {
-    return [parts[0], parts[1]];
+  if (parts.length >= 3) {
+    return [parts[0], parts[1], parts[2]];
+  } else if (parts.length === 2) {
+    return [parts[0], parts[1], d3 || parts[0]];
   }
 
   // Last resort
   const fallback = content.trim() || 'Great service and overall wonderful experience. Highly recommend!';
-  return [fallback, fallback];
+  return [d1 || fallback, d2 || fallback, d3 || fallback];
 }
 
 /**

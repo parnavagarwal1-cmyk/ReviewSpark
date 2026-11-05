@@ -1395,6 +1395,289 @@ tbody td {
   margin-top: 0.6rem;
 }
 
+/* Rating badge under stars */
+.rb-rating-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: rgba(108, 92, 231, 0.16);
+  border: 1px solid rgba(108, 92, 231, 0.38);
+  color: #a29bfe;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.4rem 1.15rem;
+  border-radius: 9999px;
+  margin: 0.75rem auto 0;
+  box-shadow: 0 0 14px rgba(108, 92, 231, 0.25);
+}
+
+.rb-rating-subtext {
+  color: #8a8ea8;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  text-align: center;
+  margin: 0.65rem auto 0;
+  max-width: 320px;
+}
+
+/* Detail customization sections */
+.rb-details-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  width: 100%;
+  margin-top: 0.85rem;
+  text-align: left;
+}
+
+.rb-card-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #7b809b;
+  text-transform: uppercase;
+  margin-bottom: 0.65rem;
+  display: block;
+}
+
+/* 1. TELL US MORE Card */
+.rb-aspects-card {
+  background: #111224;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 1.25rem 1.15rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.rb-aspects-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.rb-aspect-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.rb-aspect-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0.2rem;
+}
+
+.rb-aspect-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.rb-aspect-icon {
+  font-size: 1.1rem;
+}
+
+.rb-mini-stars {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.rb-mini-star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.rb-mini-star-btn:hover {
+  transform: scale(1.18);
+}
+
+.rb-mini-star-btn:active {
+  transform: scale(0.9);
+}
+
+/* 2. WHAT STOOD OUT? Section */
+.rb-standout-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.rb-pills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.rb-choice-pill {
+  padding: 0.55rem 1.1rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd0e2;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rb-choice-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.rb-choice-pill.active {
+  background: rgba(108, 92, 231, 0.22);
+  border-color: #6c5ce7;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(108, 92, 231, 0.35);
+}
+
+/* 3. ADD A NOTE Section */
+.rb-note-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.rb-note-textarea {
+  width: 100%;
+  background: #111224;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 0.95rem 1.1rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rb-note-textarea:focus {
+  border-color: #6c5ce7;
+  box-shadow: 0 0 14px rgba(108, 92, 231, 0.3);
+}
+
+/* 4. Language Selector box */
+.rb-lang-select-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.25rem 0;
+}
+
+/* Buttons in Step 1 */
+.rb-btn-rate-disabled {
+  width: 100%;
+  min-height: 54px;
+  border-radius: 9999px;
+  background: #131427;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #686d86;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  cursor: not-allowed;
+  user-select: none;
+}
+
+.rb-btn-generate {
+  width: 100%;
+  min-height: 54px;
+  border-radius: 9999px;
+  background: #7065f0;
+  border: none;
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  box-shadow: 0 8px 26px rgba(112, 101, 240, 0.45);
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.rb-btn-generate:hover {
+  background: #7d72f5;
+  box-shadow: 0 10px 30px rgba(112, 101, 240, 0.55);
+  transform: translateY(-1px);
+}
+
+.rb-btn-generate:active {
+  transform: scale(0.98);
+}
+
+/* Animated Loading Button */
+.rb-btn-loading {
+  width: 100%;
+  min-height: 54px;
+  border-radius: 9999px;
+  background: #14152b;
+  border: 1.5px solid rgba(108, 92, 231, 0.45);
+  color: #a29bfe;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: wait;
+  box-shadow: 0 0 24px rgba(108, 92, 231, 0.25);
+  user-select: none;
+}
+
+.rb-loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6c5ce7;
+  animation: rb-dot-wave 1.2s infinite ease-in-out;
+}
+
+.rb-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.rb-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes rb-dot-wave {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.35;
+  }
+  40% {
+    transform: scale(1.25);
+    opacity: 1;
+    background: #a29bfe;
+    box-shadow: 0 0 8px #a29bfe;
+  }
+}
+
 /* Rating info row */
 .rb-rating-row {
   display: flex;
@@ -1508,6 +1791,34 @@ tbody td {
   letter-spacing: 0.1em;
   color: #7b7f96;
   text-transform: uppercase;
+}
+
+.rb-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.rb-lang-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #a0a5bc;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.rb-lang-toggle-btn:hover {
+  background: rgba(108, 92, 231, 0.2);
+  border-color: #6c5ce7;
+  color: #ffffff;
 }
 
 .rb-rewrite-btn {
@@ -1678,24 +1989,27 @@ tbody td {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   margin-top: 0.25rem;
 }
 
 .rb-page-dot {
   width: 6px;
-  height: 4px;
-  border-radius: 4px;
-  background: #3b3f58;
+  height: 6px;
+  border-radius: 50%;
+  background: #32354c;
   border: none;
   cursor: pointer;
+  padding: 0;
   transition: all 0.25s ease;
 }
 
 .rb-page-dot.active {
   width: 24px;
-  background: #6366f1;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  height: 5px;
+  border-radius: 9999px;
+  background: #6c5ce7;
+  box-shadow: 0 0 10px rgba(108, 92, 231, 0.6);
 }
 
 /* Main Copy & Continue Green Button */
