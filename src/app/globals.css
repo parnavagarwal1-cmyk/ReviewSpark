@@ -1019,9 +1019,10 @@ tbody td {
   background-repeat: no-repeat;
   background-attachment: fixed;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: max(1.25rem, env(safe-area-inset-top)) max(0.85rem, env(safe-area-inset-right)) max(2.5rem, env(safe-area-inset-bottom)) max(0.85rem, env(safe-area-inset-left));
+  padding: max(1.75rem, env(safe-area-inset-top, 1.75rem)) max(0.85rem, env(safe-area-inset-right)) max(2.5rem, env(safe-area-inset-bottom, 2.5rem)) max(0.85rem, env(safe-area-inset-left));
   font-family: var(--font-sans);
   color: #ffffff;
   overflow-x: hidden;
@@ -1034,7 +1035,7 @@ tbody td {
   display: flex;
   flex-direction: column;
   gap: 1.15rem;
-  margin: 0 auto;
+  margin: auto;
 }
 
 /* Business Identity Row */
@@ -1737,11 +1738,15 @@ tbody td {
 /* ── Mobile Phone Screen Optimizations (<= 480px) ───────────────── */
 @media (max-width: 480px) {
   .public-page {
-    padding: max(0.9rem, env(safe-area-inset-top)) 0.75rem max(2rem, env(safe-area-inset-bottom)) 0.75rem;
-    align-items: flex-start;
+    padding: max(1.5rem, env(safe-area-inset-top, 1.5rem)) 0.85rem max(2rem, env(safe-area-inset-bottom, 2rem)) 0.85rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
   }
 
   .review-container {
+    margin: auto;
     gap: 0.95rem;
   }
 
@@ -1760,8 +1765,12 @@ tbody td {
     font-size: 1.15rem;
   }
 
+  .rb-review-wrapper {
+    gap: 0.85rem;
+  }
+
   .rb-google-card {
-    padding: 1.25rem 0.95rem;
+    padding: 1.25rem 1rem;
     border-radius: 18px;
   }
 
@@ -1815,10 +1824,10 @@ tbody td {
   }
 
   .rb-review-card {
-    flex: 0 0 85%;
-    min-width: 85%;
-    max-width: 85%;
-    padding: 1.15rem 0.95rem;
+    flex: 0 0 88%;
+    min-width: 88%;
+    max-width: 88%;
+    padding: 1.15rem 1rem;
     border-radius: 18px;
   }
 
@@ -1841,14 +1850,17 @@ tbody td {
 /* ── Small Mobile Screens (<= 360px, e.g. iPhone SE / small Android) ── */
 @media (max-width: 360px) {
   .public-page {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding: max(1.2rem, env(safe-area-inset-top, 1.2rem)) 0.5rem max(1.75rem, env(safe-area-inset-bottom, 1.75rem)) 0.5rem;
+  }
+
+  .review-container {
+    margin: auto;
   }
 
   .rb-review-card {
-    flex: 0 0 86%;
-    min-width: 86%;
-    max-width: 86%;
+    flex: 0 0 88%;
+    min-width: 88%;
+    max-width: 88%;
     padding: 1rem 0.85rem;
   }
 

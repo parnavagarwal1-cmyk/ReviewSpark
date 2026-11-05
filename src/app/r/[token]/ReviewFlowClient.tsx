@@ -370,18 +370,20 @@ export default function ReviewFlowClient({ token }: { token: string }) {
   return (
     <div className="public-page">
       <div className="review-container">
-        {/* Top Business Identity Section */}
-        <div className="review-top-identity">
-          <div className="review-avatar">
-            {businessInitial}
+        {/* Top Business Identity Section (Shown on rating screen) */}
+        {step !== 'select-draft' && (
+          <div className="review-top-identity">
+            <div className="review-avatar">
+              {businessInitial}
+            </div>
+            <div className="review-identity-info">
+              <h1 className="review-identity-name">{context?.business_name || 'Business'}</h1>
+              <span className="review-category-pill">
+                {context?.category || 'Service Based Business'}
+              </span>
+            </div>
           </div>
-          <div className="review-identity-info">
-            <h1 className="review-identity-name">{context?.business_name || 'Business'}</h1>
-            <span className="review-category-pill">
-              {context?.category || 'Service Based Business'}
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Step: Select Rating & Configure Aspects / Tags */}
         {(step === 'select-rating' || step === 'generating') && (
