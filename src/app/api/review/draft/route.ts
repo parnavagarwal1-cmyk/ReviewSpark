@@ -148,7 +148,6 @@ export async function POST(request: NextRequest) {
   let city = bizRecord.city as string | undefined;
   let nearby = bizRecord.nearby as string | undefined;
   let street = bizRecord.street as string | undefined;
-  let phone = bizRecord.phone as string | undefined;
   let primaryLang = bizRecord.primary_language as string | undefined;
   let secondaryLang = bizRecord.secondary_language as string | undefined;
   let customContext = bizRecord.custom_context as string | undefined;
@@ -162,7 +161,6 @@ export async function POST(request: NextRequest) {
         city = city || parsed.city;
         nearby = nearby || parsed.nearby;
         street = street || parsed.street;
-        phone = phone || parsed.phone;
         primaryLang = primaryLang || parsed.primary_language;
         secondaryLang = secondaryLang || parsed.secondary_language;
         customContext = parsed.custom_context;
@@ -181,7 +179,6 @@ export async function POST(request: NextRequest) {
     city,
     nearby,
     street,
-    phone,
     primaryLanguage: primaryLang || 'English',
     secondaryLanguage: secondaryLang || 'Hinglish',
     selectedLanguage: selected_language || undefined,

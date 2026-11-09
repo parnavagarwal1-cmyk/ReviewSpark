@@ -522,7 +522,6 @@ export interface GenerateDraftOptions {
   city?: string | null;
   nearby?: string | null;
   street?: string | null;
-  phone?: string | null;
   primaryLanguage?: string | null;
   secondaryLanguage?: string | null;
   selectedLanguage?: string | null;
@@ -582,9 +581,10 @@ CRITICAL REQUIREMENTS:
 1. EMOJIS: Every single review MUST include 2 to 4 natural, expressive, and relevant emojis (e.g. 🍕, ☕, ✨, 😍, 🙌, ⭐, ❤️, 👏, 💯, 👍, 🍽️) seamlessly placed in the sentences.
 2. SEO & LOCATION: Naturally weave 1 or 2 of the provided SEO Target Keywords and location details (city, street, or nearby landmark) into the sentences to boost the business's Google Maps Local SEO ranking. Do not stuff keywords unnaturally.
 3. AUTHENTIC HUMAN TONE: Sound like real people sharing genuine personal experiences on Google Maps. No robotic phrases or corporate jargon.
-4. REVIEW LENGTH: Keep each review around 35 to 50 words (natural, readable Google Review length).
-5. CLEAN FORMAT: Output clean plain text. Do NOT use markdown bold asterisks (**like this**).
-6. THREE DISTINCT PERSPECTIVES:
+4. NO CONTACT NUMBERS: NEVER mention or include phone numbers, contact numbers, email addresses, or website URLs in the reviews.
+5. REVIEW LENGTH: Keep each review around 35 to 50 words (natural, readable Google Review length).
+6. CLEAN FORMAT: Output clean plain text. Do NOT use markdown bold asterisks (**like this**).
+7. THREE DISTINCT PERSPECTIVES:
    - Draft 1: Enthusiastic full recommendation highlighting top experience, SEO keywords, and emojis.
    - Draft 2: Personal experience emphasizing the wonderful ambience, welcoming staff courtesy, and emojis.
    - Draft 3: Crisp, punchy review highlighting great quality, fast service, value, and emojis.
@@ -610,7 +610,6 @@ Draft 3: [review text with emojis]`;
 Business Name: ${businessName}
 Category: ${businessCategory || 'Local Business'}
 ${locationString ? `Location / Address: ${locationString}` : ''}
-${options.phone ? `Contact: ${options.phone}` : ''}
 ${options.serviceKeywords ? `SEO Target Keywords: ${options.serviceKeywords}` : ''}
 ${options.customContext ? `Business Highlights & Specialties: ${options.customContext}` : ''}
 
