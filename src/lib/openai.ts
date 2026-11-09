@@ -161,18 +161,19 @@ function getGeminiClient(apiKey: string): OpenAI {
 
 /**
  * Returns the Gemini model to use.
- * Defaults to 'gemini-3-flash-preview' — Google's active flagship high-speed flash model.
+ * Defaults to 'gemini-3.8-flash'.
  */
 export function getGeminiModel(): string {
   const envModel = process.env.GEMINI_MODEL;
   if (envModel && envModel.trim()) {
     return envModel.trim();
   }
-  return 'gemini-3-flash-preview';
+  return 'gemini-3.8-flash';
 }
 
 // Fallback Gemini models if primary model is unavailable
 export const GEMINI_FALLBACK_MODELS = [
+  'gemini-3.8-flash',
   'gemini-3-flash-preview',
   'gemini-3.1-flash-lite',
   'gemini-2.5-flash',
@@ -382,8 +383,21 @@ async function executeChatCompletionWithFallback(
           lastGeminiError = directErr;
           const errMsg = directErr?.message || String(directErr);
 
-          // If it's a 404 (model deprecated or not found on this project), try next model immediately
-          if (errMsg.includes('404') || errMsg.includes('not found') || errMsg.includes('no longer available')) {
+          // If it's a 404, 503 (high demand / temporary server overload), timeout, or model not found, try next model immediately
+          if (
+            errMsg.includes('404') ||
+            errMsg.includes('503') ||
+            errMsg.includes('high demand') ||
+            errMsg.includes('UNAVAILABLE') ||
+            errMsg.includes('overloaded') ||
+            errMsg.includes('capacity') ||
+            errMsg.includes('not found') ||
+            errMsg.includes('no longer available') ||
+            errMsg.includes('timeout')
+          ) {
+            console.warn(
+              `[Gemini Model Fallback] Model ${currentModel} returned: "${errMsg.slice(0, 100)}". Trying fallback model...`
+            );
             continue;
           }
 
@@ -452,6 +466,7 @@ export const OPENAI_MODEL =
 
 // Cost per 1M tokens
 const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
+  'gemini-3.8-flash': 0.075,
   'gemini-3-flash-preview': 0.075,
   'gemini-3.1-flash-lite': 0.05,
   'gemini-2.5-flash': 0.075,
@@ -460,6 +475,7 @@ const COST_PER_1M_INPUT_TOKENS: Record<string, number> = {
   'gpt-4o': 2.50,
 };
 const COST_PER_1M_OUTPUT_TOKENS: Record<string, number> = {
+  'gemini-3.8-flash': 0.30,
   'gemini-3-flash-preview': 0.30,
   'gemini-3.1-flash-lite': 0.20,
   'gemini-2.5-flash': 0.30,
