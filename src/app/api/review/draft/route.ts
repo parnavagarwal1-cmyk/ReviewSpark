@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   let businessQuery = await supabase
     .from('businesses')
     .select(
-      'id, business_name, address, category, is_active, city, nearby, street, service_keywords, primary_language, secondary_language, custom_context'
+      'id, business_name, address, category, is_active, city, nearby, street, phone, service_keywords, primary_language, secondary_language, custom_context'
     )
     .eq('public_token', token)
     .eq('is_active', true)
@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
   let city = bizRecord.city as string | undefined;
   let nearby = bizRecord.nearby as string | undefined;
   let street = bizRecord.street as string | undefined;
+  let phone = bizRecord.phone as string | undefined;
   let primaryLang = bizRecord.primary_language as string | undefined;
   let secondaryLang = bizRecord.secondary_language as string | undefined;
   let customContext = bizRecord.custom_context as string | undefined;
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
         city = city || parsed.city;
         nearby = nearby || parsed.nearby;
         street = street || parsed.street;
+        phone = phone || parsed.phone;
         primaryLang = primaryLang || parsed.primary_language;
         secondaryLang = secondaryLang || parsed.secondary_language;
         customContext = parsed.custom_context;
@@ -179,6 +181,7 @@ export async function POST(request: NextRequest) {
     city,
     nearby,
     street,
+    phone,
     primaryLanguage: primaryLang || 'English',
     secondaryLanguage: secondaryLang || 'Hinglish',
     selectedLanguage: selected_language || undefined,
